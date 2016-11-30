@@ -554,7 +554,7 @@ namespace Jinx
 
             // explosion damage
             var edmg = R.IsReady() &&
-                       CountInPath(Player.ServerPosition, target.ServerPosition, R.Width + 50,
+                       CountInPath(Player.ServerPosition, target.ServerPosition, R.Width + 225,
                            (maxrdist * 2), out units) > 1 &&
                             target.Distance(units.OrderBy(x => x.Distance(Player.ServerPosition))
                                 .First(t => t.NetworkId != target.NetworkId).ServerPosition) <= R.Width + 225 // explosion radius? :^)
