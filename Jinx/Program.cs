@@ -30,16 +30,16 @@ namespace Jinx
 
             Q = new Spell(SpellSlot.Q, 600);
 
-            W = new Spell(SpellSlot.W, 1500f);
+            W = new Spell(SpellSlot.W, 1500f) { MinHitChance = HitChance.VeryHigh };
             W.SetSkillshot(0.6f, 60f, 3300f, true, SkillshotType.SkillshotLine);
 
             E = new Spell(SpellSlot.E, 900f);
             E.SetSkillshot(1.2f, 120f, 2300f, false, SkillshotType.SkillshotCircle);
 
-            R = new Spell(SpellSlot.R, 3000);
+            R = new Spell(SpellSlot.R, 3000) { MinHitChance = HitChance.VeryHigh };
             R.SetSkillshot(0.6f, 140f, 1700f, false, SkillshotType.SkillshotLine);
 
-            Root = new Menu("ProSeries: Jinx", "jinx", true);
+            Root = new Menu("Jinx#", "jinx", true);
 
             var ormenu = new Menu("Orbwalk", "ormenu");
             Orbwalker = new Orbwalking.Orbwalker(ormenu);
@@ -56,14 +56,15 @@ namespace Jinx
 
             var tcmenu = new Menu("Config", "tcmenu");
 
-
             tcmenu.AddItem(new MenuItem("autor", "Auto R Killable")).SetValue(true);
             tcmenu.AddItem(new MenuItem("autoe", "Auto E Immobile")).SetValue(true);
+            //tcmenu.AddItem(new MenuItem("autoespell", "Auto E on Spell")).SetValue(false).SetTooltip("Use at own risk!");
             tcmenu.AddItem(new MenuItem("autoedash", "Auto E Dashing")).SetValue(true);
-            tcmenu.AddItem(new MenuItem("autoetele", "Auto E Teleport")).SetValue(true);
+            tcmenu.AddItem(new MenuItem("autoetp", "Auto E Teleport")).SetValue(false).ValueChanged += (sender, eventArgs) => eventArgs.Process = false;
             comenu.AddSubMenu(tcmenu);
 
             comenu.AddItem(new MenuItem("useqcombo", "Use Q")).SetValue(true);
+            comenu.AddItem(new MenuItem("useqcombominion", "-> Minion?")).SetValue(false);
             comenu.AddItem(new MenuItem("usewcombo", "Use W")).SetValue(true);
             comenu.AddItem(new MenuItem("useecombo", "Use E")).SetValue(false);
             comenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
@@ -80,20 +81,23 @@ namespace Jinx
 
             hamenu.AddSubMenu(wList);
             hamenu.AddItem(new MenuItem("useqharass", "Use Q")).SetValue(true);
-            hamenu.AddItem(new MenuItem("useqharassminion", "-> Only On Minion")).SetValue(true);
+            hamenu.AddItem(new MenuItem("useqharassminion", "-> Only On Minion")).SetValue(false)
+                .SetTooltip("Uses Rockets on minions near Enemies so you dont get creep aggro.");
             hamenu.AddItem(new MenuItem("qharassmana", "-> Minimum mana %")).SetValue(new Slider(65));
             hamenu.AddItem(new MenuItem("usewharass", "Use W")).SetValue(true);
             hamenu.AddItem(new MenuItem("wharassmana", "-> Minimum mana %")).SetValue(new Slider(70));
-            hamenu.AddItem(new MenuItem("autoqharass", "Auto Q Minion Harass").SetValue(true));
-            hamenu.AddItem(new MenuItem("autoqharassmana", "-> Minimum mana %")).SetValue(new Slider(55));
+            hamenu.AddItem(new MenuItem("autoqharass", "Auto Q Minion Harass").SetValue(true))
+                .SetTooltip("Uses Rockets on minions near Enemies so you dont get creep aggro.");
+            hamenu.AddItem(new MenuItem("autoqharassmana", "-> Minimum mana %")).SetValue(new Slider(45));
 
             Root.AddSubMenu(hamenu);
 
             var wMenu = new Menu("Farming", "farming");
             wMenu.AddItem(new MenuItem("useqclear", "Use Q").SetValue(true));
-            wMenu.AddItem(new MenuItem("useqclearkill", "-> Only if Will Kill")).SetValue(true);
+            wMenu.AddItem(new MenuItem("swapbackfarm", "Auto Swap to Minigun")).SetValue(true);
             wMenu.AddItem(new MenuItem("clearqmin", "Minimum minion count")).SetValue(new Slider(3, 2, 6));
             wMenu.AddItem(new MenuItem("waveclearmana", "Wave Minimum mana %")).SetValue(new Slider(75));
+            wMenu.AddItem(new MenuItem("useqclearkill", "-> Or if Will Kill")).SetValue(true);
             wMenu.AddItem(new MenuItem("jungleclearmana", "Jungle Minimum mana %")).SetValue(new Slider(35));
             Root.AddSubMenu(wMenu);
 
@@ -104,6 +108,7 @@ namespace Jinx
             exmenu.AddItem(new MenuItem("harasswc", "Harass in Wave Clear")).SetValue(true);
             exmenu.AddItem(new MenuItem("minrdist", "Min R Distance")).SetValue(new Slider(450, 0, 3000));
             exmenu.AddItem(new MenuItem("maxrdist", "Max R distance")).SetValue(new Slider(1500, 0, 3000));
+            exmenu.AddItem(new MenuItem("autoswap", "Auto Swap to Minigun when Idle")).SetValue(true);
             //exmenu.AddItem(new MenuItem("interrupt", "Interrupter")).SetValue(false);
             //exmenu.AddItem(new MenuItem("gap", "Anti-Gapcloser")).SetValue(false);
             Root.AddSubMenu(exmenu);
@@ -124,9 +129,9 @@ namespace Jinx
             Root.AddSubMenu(skmenu);
 
             var drmenu = new Menu("Draw", "drmenu");
-            drmenu.AddItem(new MenuItem("drawe", "Draw E")).SetValue(false).ValueChanged +=
+            drmenu.AddItem(new MenuItem("jinxdrawe", "Draw E")).SetValue(false).ValueChanged +=
                 (sender, eventArgs) => eventArgs.Process = false;
-            drmenu.AddItem(new MenuItem("draww", "Draw W")).SetValue(false).ValueChanged +=
+            drmenu.AddItem(new MenuItem("jinxdraww", "Draw W")).SetValue(false).ValueChanged +=
                 (sender, eventArgs) => eventArgs.Process = false;
             Root.AddSubMenu(drmenu);
 
@@ -134,17 +139,45 @@ namespace Jinx
 
             Orbwalking.BeforeAttack += Orbwalking_BeforeAttack;
             Orbwalking.AfterAttack += Orbwalking_AfterAttack;
+            //Obj_AI_Base.OnProcessSpellCast += Obj_AI_Hero_OnProcessSpellCast;
             Game.OnUpdate += Game_OnUpdate;
 
-            Game.PrintChat("<b><font color=\"#FF3366\">ProSeries: Jinx</font></b> - Loaded!");
+            Game.PrintChat("<b><font color=\"#FF3366\">Jinx#</font></b> - Loaded!");
+        }
+
+        private static void Obj_AI_Hero_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            if (sender.IsMe && args.SData.IsAutoAttack())
+            {
+                int settime = 5000; // 5 seconds
+
+                var casttime = (sender.Spellbook.CastTime - Game.Time) * 1000;
+                var aatime = Math.Abs(casttime - sender.AttackCastDelay * 1000);
+
+                var aaacountinsettime = (int) (settime / aatime);
+
+
+                Console.WriteLine("Delay: " + sender.AttackCastDelay * 1000);
+
+                Console.WriteLine("CastTime: " + aatime);
+                Console.WriteLine("CanAA " + aaacountinsettime + " times in 5 seconds");
+            }
+        }
+
+        private static float MiniGunDamageOverTime(Obj_AI_Hero sender, Obj_AI_Hero target, int time)
+        {
+            var casttime = (sender.Spellbook.CastTime - Game.Time) * 1000;
+            var aatime = Math.Abs(casttime - sender.AttackCastDelay * 1000);
+            var aaacountinsettime = (int) (time / aatime);
+
+            var minigunDmg = sender.GetAutoAttackDamage(target, false) * aaacountinsettime;
+            return (float) minigunDmg;
         }
 
         private static void Orbwalking_BeforeAttack(Orbwalking.BeforeAttackEventArgs args)
         {
-            var aiHero = args.Target as Obj_AI_Hero;
             var aiMinion = args.Target as Obj_AI_Minion;
-
-            var minigunOut = Player.GetSpell(SpellSlot.Q).ToggleState == 1;
+            var hasRockets = Player.GetSpell(SpellSlot.Q).ToggleState == 1;
 
             if (aiMinion != null && !aiMinion.IsDead)
             {
@@ -157,9 +190,9 @@ namespace Jinx
 
                     foreach (var enemy in HeroManager.Enemies.Where(x => Root.Item("hwl" + x.ChampionName).GetValue<bool>()))
                     {
-                        if (enemy.Distance(aiMinion.ServerPosition) <= FarmRadius)
+                        if (aiMinion.Distance(enemy.Position) <= FarmRadius)
                         {
-                            if (minigunOut)
+                            if (!hasRockets)
                             {
                                 Q.Cast();
                             }
@@ -181,9 +214,9 @@ namespace Jinx
 
                 foreach (var enemy in HeroManager.Enemies.Where(x => Root.Item("hwl" + x.ChampionName).GetValue<bool>()))
                 {
-                    if (enemy.Distance(aiMinion.ServerPosition) <= FarmRadius)
+                    if (aiMinion.Distance(enemy.Position) <= FarmRadius)
                     {
-                        if (minigunOut)
+                        if (!hasRockets)
                         {
                             Q.Cast();
                         }
@@ -217,16 +250,32 @@ namespace Jinx
         private static void Game_OnUpdate(EventArgs args)
         {
             RocketRange = new[] { 75, 75, 100, 125, 150, 175 }[Q.Level];
-            var minigunOut = Player.GetSpell(SpellSlot.Q).ToggleState == 1;
 
             if (Root.Item("useskin").GetValue<bool>())
             {
                 Player.SetSkin(Player.CharData.BaseSkinName, Root.Item("skinid").GetValue<Slider>().Value);
             }
 
+            if (Root.Item("useflee").GetValue<KeyBind>().Active)
+            {
+                Orbwalking.Orbwalk(null, Game.CursorPos);
+            }
+
+            var hasRockets = Player.GetSpell(SpellSlot.Q).ToggleState == 2;
+            if (hasRockets && CanClear)
+            {
+                if (Root.Item("useqclear").GetValue<bool>() && Root.Item("swapbackfarm").GetValue<bool>())
+                {
+                    if (GetCenterMinion(false, true) == null)
+                    {
+                        Q.Cast();
+                    }
+                }
+            }
+
             if (CanCombo)
             {
-                if (!minigunOut && Root.Item("useqcombo").GetValue<bool>())
+                if (hasRockets && Root.Item("useqcombo").GetValue<bool>())
                 {
                     if (Player.ManaPercent < 35 &&
                         HeroManager.Enemies.Any(
@@ -234,6 +283,8 @@ namespace Jinx
                                     Player.GetAutoAttackDamage(i, true) * 3 < i.Health))
                     {
                         Q.Cast();
+                        //Print.PrintMsg("Mana Percent < 35 & Enemies not Killable in 3 AA");
+                        //Print.PrintMsg("Swap to minigun mana low");
                     }
                 }
 
@@ -242,20 +293,35 @@ namespace Jinx
                 {
                     if (Root.Item("useqcombo").GetValue<bool>())
                     {
-                        if (minigunOut && (Player.ManaPercent > 35 ||
-                            Player.GetAutoAttackDamage(qtarget, true) * 3 > qtarget.Health) &&
-                            qtarget.Distance(Player.ServerPosition) > 525)
-                            Q.Cast();
-
-                        if (!minigunOut && Player.ManaPercent < 35)
+                        if (!hasRockets && (Player.ManaPercent > 35 || Player.GetAutoAttackDamage(qtarget, true) * 3 > qtarget.Health))
                         {
-                            Q.Cast();
+                            if (qtarget.Distance(Player.ServerPosition) > 535)
+                            {
+                                if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
+                                {
+                                    Orbwalker.ForceTarget(GetHarassObj(qtarget));
+                                    Orbwalking.Orbwalk(GetHarassObj(qtarget), Game.CursorPos);
+                                    return;
+                                }
+
+                                Q.Cast();
+                                //Print.PrintMsg("Minigun Out - Someone killable in 3AA or Mana% > 35");
+                                //Print.PrintMsg("Swap to rockets target is greater than 525 range");
+                            }
                         }
 
-                        if (!minigunOut && qtarget.Distance(Player.ServerPosition) <= 525)
+                        if (hasRockets && qtarget.Distance(Player) <= 535)
                         {
                             Q.Cast();
+                            //Print.PrintMsg("Swap to minigun target is in basic attack range");
                         }
+
+                        if (hasRockets && Player.ManaPercent < 35 && Player.GetAutoAttackDamage(qtarget, true) * 3 < qtarget.Health)
+                        {
+                            Q.Cast();
+                            //Print.PrintMsg("Swap to minigun mana low");
+                        }
+
                     }
                 }
 
@@ -264,10 +330,16 @@ namespace Jinx
                 {
                     if (Root.Item("usewcombo").GetValue<bool>())
                     {
-                        if (wtarget.Distance(Player.ServerPosition) > 500 + RocketRange)
+                        if (Player.ManaPercent > 25 || W.GetDamage(wtarget) + Player.GetAutoAttackDamage(wtarget, true) > wtarget.Health)
                         {
-                            if (Player.GetAutoAttackDamage(wtarget, true) * 2 < wtarget.Health)
-                                W.CastIfHitchanceEquals(wtarget, HitChance.High);
+                            if (wtarget.Distance(Player.ServerPosition) > 500 + RocketRange)
+                            {
+                                if (!(Player.GetAutoAttackDamage(wtarget, true) * 2 > wtarget.Health) ||
+                                    !Orbwalking.InAutoAttackRange(wtarget))
+                                {
+                                    W.Cast(wtarget);
+                                }
+                            }
                         }
                     }
                 }
@@ -286,7 +358,7 @@ namespace Jinx
                 if (Player.Mana / Player.MaxMana * 100 > Root.Item("qharassmana").GetValue<Slider>().Value)
                 {
                     var qtarget = TargetSelector.GetTarget(525 + RocketRange + 250, TargetSelector.DamageType.Physical);
-                    if (CanHarass && qtarget.IsValidTarget() == false && !minigunOut)
+                    if (CanHarass && qtarget.IsValidTarget() == false && hasRockets)
                     {
                         if (Root.Item("useqharass").GetValue<bool>())
                         {
@@ -296,23 +368,29 @@ namespace Jinx
 
                     if (Root.Item("useqharass").GetValue<bool>())
                     {
-                        var minion = GetHarassMinion(qtarget);
+                        var minion = GetHarassObj(qtarget);
                         if (minion.IsValidTarget() && IsWhiteListed(qtarget))
                         {
-                            if (!minigunOut && Player.ManaPercent < Root.Item("qharassmana").GetValue<Slider>().Value)
+                            if (hasRockets && Player.ManaPercent < Root.Item("qharassmana").GetValue<Slider>().Value)
                             {
                                 Q.Cast();
+                                //Print.PrintMsg("Swap to minigun mana low");
                             }
 
-                            if (!minigunOut && Player.ManaPercent > Root.Item("qharassmana").GetValue<Slider>().Value)
+                            if (hasRockets && Player.ManaPercent > Root.Item("qharassmana").GetValue<Slider>().Value)
                             {
                                 if (minion.Distance(Player.ServerPosition) <= 515 + RocketRange)
                                 {
-                                    Orbwalker.ForceTarget(minion);
+                                    if (minion.Distance(Player.ServerPosition) <= 525 + RocketRange)
+                                    {
+                                        Orbwalker.ForceTarget(minion);
+                                        Orbwalking.Orbwalk(minion, Game.CursorPos);
+                                        //Player.IssueOrder(GameObjectOrder.AttackUnit, minion);
+                                    }
                                 }
                             }
 
-                            if (minigunOut && minion.Distance(Player.ServerPosition) <= 515 + RocketRange)
+                            if (!hasRockets && minion.Distance(Player.ServerPosition) <= 515 + RocketRange)
                             {
                                 Q.Cast();
                             }
@@ -320,38 +398,37 @@ namespace Jinx
 
                     }
 
-                    if (Root.Item("useqharassminion").GetValue<bool>())
+                    if (!Root.Item("useqharassminion").GetValue<bool>())
                     {
-                        return;
-                    }
-
-                    if (qtarget.IsValidTarget() && Q.IsReady() && IsWhiteListed(qtarget))
-                    {
-                        if (Root.Item("useqharass").GetValue<bool>())
+                        if (qtarget.IsValidTarget() && Q.IsReady() && IsWhiteListed(qtarget))
                         {
-                            if (!minigunOut && Player.ManaPercent < Root.Item("qharassmana").GetValue<Slider>().Value)
+                            if (Root.Item("useqharass").GetValue<bool>())
                             {
-                                Q.Cast();
-                            }
-
-                            if (minigunOut && Player.ManaPercent > Root.Item("qharassmana").GetValue<Slider>().Value)
-                            {
-                                if (qtarget.Distance(Player.ServerPosition) > 525)
+                                if (hasRockets && Player.ManaPercent < Root.Item("qharassmana").GetValue<Slider>().Value)
+                                {
                                     Q.Cast();
-                            }
+                                }
 
-                            if (!minigunOut && qtarget.Distance(Player.ServerPosition) <= 525)
-                            {
-                                Q.Cast();
+                                if (!hasRockets &&
+                                    Player.ManaPercent > Root.Item("qharassmana").GetValue<Slider>().Value)
+                                {
+                                    if (qtarget.Distance(Player.ServerPosition) > 525)
+                                        Q.Cast();
+                                }
+
+                                if (hasRockets && qtarget.Distance(Player.ServerPosition) <= 525)
+                                {
+                                    Q.Cast();
+                                }
                             }
                         }
-                    }
 
-                    var wtarget = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
-                    if (wtarget.IsValidTarget() && W.IsReady() && IsWhiteListed(wtarget))
-                    {
-                        if (Root.Item("usewharass").GetValue<bool>())
-                            W.CastIfHitchanceEquals(wtarget, HitChance.VeryHigh);
+                        var wtarget = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
+                        if (wtarget.IsValidTarget() && W.IsReady() && IsWhiteListed(wtarget))
+                        {
+                            if (Root.Item("usewharass").GetValue<bool>())
+                                W.Cast(wtarget);
+                        }
                     }
                 }
             }
@@ -360,19 +437,16 @@ namespace Jinx
             {
                 if (Root.Item("useqclear").GetValue<bool>())
                 {
-                    if (Player.Mana / Player.MaxMana * 100 > Root.Item("waveclearmana").GetValue<Slider>().Value)
+                    if (GetCenterMinion(Root.Item("useqclearkill").GetValue<bool>()) != null)
                     {
-                        if (GetCenterMinion(Root.Item("useqclearkill").GetValue<bool>() || Player.Level > 14).IsValidTarget())
+                        if (!hasRockets)
                         {
-                            if (minigunOut)
-                            {
-                                Q.Cast();
-                            }
+                            Q.Cast();
+                        }
 
-                            if (!minigunOut && Player.Level >= 11)
-                            {
-                                Orbwalker.ForceTarget(GetCenterMinion(Root.Item("useqclearkill").GetValue<bool>() || Player.Level > 14));
-                            }
+                        if (hasRockets/* && Player.Level >= 11*/) // not sure when should force target
+                        {
+                            Orbwalker.ForceTarget(GetCenterMinion(Root.Item("useqclearkill").GetValue<bool>()));
                         }
                     }
 
@@ -380,13 +454,13 @@ namespace Jinx
                     {
                         if (Q.IsReady())
                         {
-                            if (minigunOut)
+                            if (!hasRockets)
                             {
                                 var bigMob = JungleMobsInRange(525 + RocketRange).FirstOrDefault();
                                 if (bigMob != null)
                                 {
                                     var minionsNearMob = ObjectManager.Get<Obj_AI_Minion>().Where(x => x.Distance(bigMob) <= FarmRadius * 2);
-                                    if (minionsNearMob.Count() > Root.Item("clearqmin").GetValue<Slider>().Value + 1)
+                                    if (minionsNearMob.Count() > Root.Item("clearqmin").GetValue<Slider>().Value)
                                     {
                                         Q.Cast();
                                     }
@@ -397,14 +471,11 @@ namespace Jinx
                 }
             }
 
-            var hasRockets = Player.GetSpell(SpellSlot.Q).ToggleState == 2;
-            if (hasRockets && Q.IsReady())
+            if (hasRockets && Q.IsReady() && Root.Item("autoswap").GetValue<bool>())
             {
-                if (!Root.Item("useclear").GetValue<KeyBind>().Active &&
-                    !Root.Item("usecombo").GetValue<KeyBind>().Active &&
-                    !Root.Item("useharass").GetValue<KeyBind>().Active)
+                if (!CanClear && !CanCombo && !CanHarass)
                 {
-                    if (Player.ManaPercent <= 35 ||  !GetCenterMinion().IsValidTarget())
+                    if (Player.ManaPercent <= 35 || !GetCenterMinion().IsValidTarget())
                     {
                         Q.Cast();
                     }
@@ -423,22 +494,13 @@ namespace Jinx
                 }
             }
 
-            if (Root.Item("autor").GetValue<bool>())
+            if (Root.Item("autor").GetValue<bool>() || CanCombo)
             {
                 var maxDistance = Root.Item("maxrdist").GetValue<Slider>().Value;
-                var minDistance = Root.Item("minrdist").GetValue<Slider>().Value; // 450
 
                 foreach (var target in ObjectManager.Get<Obj_AI_Hero>().Where(h => h.IsValidTarget(maxDistance)))
                 {
-                    var noksDistance = Math.Max(1, target.CountAlliesInRange(Math.Min(minDistance * 2, 900)) - 1) * 125;
-                    var canr = target.Distance(Player.ServerPosition) > minDistance + noksDistance && !target.IsZombie &&
-                               !TargetSelector.IsInvulnerable(target, TargetSelector.DamageType.Physical);
-
-                    var aaDamage = Orbwalking.InAutoAttackRange(target)
-                        ? Player.GetAutoAttackDamage(target, true)
-                        : 0;
-
-                    if (target.Health - aaDamage <= GetRDamage(target) && canr)
+                    if (target.Health <= GetRDamage(target) * 0.958 && CanRCheck(target))
                     {
                         R.Cast(target);
                     }
@@ -473,39 +535,75 @@ namespace Jinx
             return Root.Item("hwl" + unit.ChampionName).GetValue<bool>();
         }
 
-        internal static Obj_AI_Base GetCenterMinion(bool cankill = false)
+        internal static Obj_AI_Base GetCenterMinion(bool willkill = false, bool combo = false)
         {
-            var minions = cankill
-                ? MinionManager.GetMinions(525 + RocketRange)
-                    .Where(x => x.Health <= Player.GetAutoAttackDamage(x, true))
-                : MinionManager.GetMinions(525 + RocketRange);
+            if (!combo && (Player.Mana / Player.MaxMana * 100 > Root.Item("waveclearmana").GetValue<Slider>().Value || willkill))
+            {
+                var autocount = new[] { 1, 2, 3, 3 };
+                var aa = autocount[Math.Min(18, Player.Level) / 6];
 
-            var centerlocation =
-                MinionManager.GetBestCircularFarmLocation(minions.Select(x => x.Position.To2D()).ToList(), 250,
-                    525 + RocketRange);
+                var minions = MinionManager.GetMinions(525 + RocketRange);
 
-            return centerlocation.MinionsHit >= Root.Item("clearqmin").GetValue<Slider>().Value
-                ? MinionManager.GetMinions(1000).OrderBy(x => x.Distance(centerlocation.Position)).FirstOrDefault()
-                : null;
+                var centerlocation =
+                    MinionManager.GetBestCircularFarmLocation(minions.Select(x => x.Position.To2D()).ToList(), FarmRadius,
+                        525 + RocketRange);
+
+                if (centerlocation.MinionsHit >= Root.Item("clearqmin").GetValue<Slider>().Value)
+                {
+                    var m = minions.OrderBy(x => x.Distance(centerlocation.Position)).FirstOrDefault();
+
+                    if (willkill && Player.GetAutoAttackDamage(m, true) * aa > m?.Health || !willkill)
+                    {
+                        return m;
+                    }
+                }
+            }
+
+            return null;
         }
 
-        internal static Obj_AI_Base GetHarassMinion(Obj_AI_Hero target)
+        internal static bool CanRCheck(Obj_AI_Hero unit)
+        {
+            if (unit.IsZombie || TargetSelector.IsInvulnerable(unit, TargetSelector.DamageType.Physical))
+            {
+                return false;
+            }
+
+            if (unit.Distance(Player.ServerPosition) < Root.Item("minrdist").GetValue<Slider>().Value)
+            {
+                return false;
+            }
+
+            foreach (var ally in HeroManager.Allies.Where(x => !x.IsMe))
+            {
+                if (ally.Distance(unit.ServerPosition) <= 500 && ally.HealthPercent > unit.HealthPercent &&
+                    ally.HealthPercent > 20 && unit.CountEnemiesInRange(R.Width + 250) < 2)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        internal static Obj_AI_Base GetHarassObj(Obj_AI_Hero target)
         {
             if (target == null)
             {
                 return null;
             }
 
-            var minions = MinionManager.GetMinions(525 + RocketRange);
-            foreach (var minion in minions)
+            var objs = ObjectManager.Get<Obj_AI_Base>().Where(x => x.Distance(Player.ServerPosition) <= RocketRange + 525);
+            foreach (var minion in objs.OrderBy(m => m.Distance(target.Position)))
             {
-                if (minion.Distance(target) <= FarmRadius)
+                var mPos = Prediction.GetPrediction(target, 100 + Game.Ping / 2f).UnitPosition;
+                if (minion.Distance(mPos) <= FarmRadius)
                 {
-                    var dmgdealtToMinion = Player.GetAutoAttackDamage(minion, true);
-                    if (minion.Health - dmgdealtToMinion > 150)
-                    {
+                    //var dmgdealtToMinion = Player.GetAutoAttackDamage(minion, true);
+                    //if (minion.Health - dmgdealtToMinion > 150)
+                    //{
                         return minion;
-                    }
+                    //}
                 }
             }
 
