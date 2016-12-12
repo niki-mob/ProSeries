@@ -41,38 +41,42 @@ namespace Jinx
 
             Root = new Menu("Jinx#", "jinx", true);
 
-            var ormenu = new Menu("Orbwalk", "ormenu");
+            var ormenu = new Menu("-] Orbwalk", "ormenu");
             Orbwalker = new Orbwalking.Orbwalker(ormenu);
             Root.AddSubMenu(ormenu);
 
-            var kemenu = new Menu("Keys", "kemenu");
+            var kemenu = new Menu("-] Keys", "kemenu");
             kemenu.AddItem(new MenuItem("usecombo", "Combo [active]")).SetValue(new KeyBind(32, KeyBindType.Press));
             kemenu.AddItem(new MenuItem("useharass", "Harass [active]")).SetValue(new KeyBind('G', KeyBindType.Press));
             kemenu.AddItem(new MenuItem("useclear", "Wave/Jungle [active]")).SetValue(new KeyBind(86, KeyBindType.Press));
             kemenu.AddItem(new MenuItem("useflee", "Flee [active]")).SetValue(new KeyBind('A', KeyBindType.Press));
             Root.AddSubMenu(kemenu);
 
-            var comenu = new Menu("Combo", "cmenu");
+            var comenu = new Menu("-] Combo", "cmenu");
 
-            var tcmenu = new Menu("Config", "tcmenu");
+            var tcmenu = new Menu("-] Misc", "tcmenu");
 
             tcmenu.AddItem(new MenuItem("autor", "Auto R Killable")).SetValue(true);
             tcmenu.AddItem(new MenuItem("autoe", "Auto E Immobile")).SetValue(true);
             //tcmenu.AddItem(new MenuItem("autoespell", "Auto E on Spell")).SetValue(false).SetTooltip("Use at own risk!");
             tcmenu.AddItem(new MenuItem("autoedash", "Auto E Dashing")).SetValue(true);
-            tcmenu.AddItem(new MenuItem("autoetp", "Auto E Teleport")).SetValue(false).ValueChanged += (sender, eventArgs) => eventArgs.Process = false;
+            tcmenu.AddItem(new MenuItem("autoegap", "Auto E Gapcloser")).SetValue(true);
+            tcmenu.AddItem(new MenuItem("autoetp", "Auto E Teleport"))
+                .SetValue(false).ValueChanged += (sender, eventArgs) => eventArgs.Process = false;
             comenu.AddSubMenu(tcmenu);
 
-            comenu.AddItem(new MenuItem("useqcombo", "Use Q")).SetValue(true);
-            comenu.AddItem(new MenuItem("useqcombominion", "-> Minion?")).SetValue(false);
-            comenu.AddItem(new MenuItem("usewcombo", "Use W")).SetValue(true);
-            comenu.AddItem(new MenuItem("useecombo", "Use E")).SetValue(false);
-            comenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
             Root.AddSubMenu(comenu);
 
-            var hamenu = new Menu("Harass", "hamenu");
+            var abmenu = new Menu("-] Skills", "abmenu");
+            abmenu.AddItem(new MenuItem("useqcombo", "Use Q")).SetValue(true);
+            abmenu.AddItem(new MenuItem("useqcombominion", "-> Q on Minion?")).SetValue(false);
+            abmenu.AddItem(new MenuItem("usewcombo", "Use W")).SetValue(true);
+            abmenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
+            comenu.AddSubMenu(abmenu);
 
-            var wList = new Menu("Harass Whitelist", "hwl");
+            var hamenu = new Menu("-] Harass", "hamenu");
+
+            var wList = new Menu("-] Harass Whitelist", "hwl");
             foreach (var enemy in HeroManager.Enemies)
             {
                 wList.AddItem(new MenuItem("hwl" + enemy.ChampionName, enemy.ChampionName))
@@ -92,7 +96,7 @@ namespace Jinx
 
             Root.AddSubMenu(hamenu);
 
-            var wMenu = new Menu("Farming", "farming");
+            var wMenu = new Menu("-] Farming", "farming");
             wMenu.AddItem(new MenuItem("useqclear", "Use Q").SetValue(true));
             wMenu.AddItem(new MenuItem("swapbackfarm", "Auto Swap to Minigun")).SetValue(true);
             wMenu.AddItem(new MenuItem("clearqmin", "Minimum minion count")).SetValue(new Slider(3, 2, 6));
@@ -101,19 +105,19 @@ namespace Jinx
             wMenu.AddItem(new MenuItem("jungleclearmana", "Jungle Minimum mana %")).SetValue(new Slider(35));
             Root.AddSubMenu(wMenu);
 
-            var fmenu = new Menu("Flee", "fmenu");
+            var fmenu = new Menu("-] Flee", "fmenu");
             Root.AddSubMenu(fmenu);
 
-            var exmenu = new Menu("Extra", "exmenu");
+            var exmenu = new Menu("-] Extra", "exmenu");
             exmenu.AddItem(new MenuItem("harasswc", "Harass in Wave Clear")).SetValue(true);
             exmenu.AddItem(new MenuItem("minrdist", "Min R Distance")).SetValue(new Slider(450, 0, 3000));
-            exmenu.AddItem(new MenuItem("maxrdist", "Max R distance")).SetValue(new Slider(1500, 0, 3000));
+            exmenu.AddItem(new MenuItem("maxrdist", "Max R distance")).SetValue(new Slider(1850, 0, 3000));
             exmenu.AddItem(new MenuItem("autoswap", "Auto Swap to Minigun when Idle")).SetValue(true);
             //exmenu.AddItem(new MenuItem("interrupt", "Interrupter")).SetValue(false);
             //exmenu.AddItem(new MenuItem("gap", "Anti-Gapcloser")).SetValue(false);
             Root.AddSubMenu(exmenu);
 
-            var skmenu = new Menu("Skins", "skmenu");
+            var skmenu = new Menu("-] Skins", "skmenu");
             var skinitem = new MenuItem("useskin", "Enabled");
             skmenu.AddItem(skinitem).SetValue(false);
 
@@ -128,39 +132,69 @@ namespace Jinx
             skmenu.AddItem(new MenuItem("skinid", "Skin Id")).SetValue(new Slider(4, 0, 12));
             Root.AddSubMenu(skmenu);
 
-            var drmenu = new Menu("Draw", "drmenu");
-            drmenu.AddItem(new MenuItem("jinxdrawe", "Draw E")).SetValue(false).ValueChanged +=
-                (sender, eventArgs) => eventArgs.Process = false;
-            drmenu.AddItem(new MenuItem("jinxdraww", "Draw W")).SetValue(false).ValueChanged +=
-                (sender, eventArgs) => eventArgs.Process = false;
+            var drmenu = new Menu("-] Draw", "drmenu");
+            drmenu.AddItem(new MenuItem("drawmyw", "Draw W")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 37, 230, 255)));
+            drmenu.AddItem(new MenuItem("drawmyq", "Draw Q")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 0, 220, 144)));
             Root.AddSubMenu(drmenu);
 
             Root.AddToMainMenu();
 
+            Drawing.OnDraw += Drawing_OnDraw;
             Orbwalking.BeforeAttack += Orbwalking_BeforeAttack;
             Orbwalking.AfterAttack += Orbwalking_AfterAttack;
             //Obj_AI_Base.OnProcessSpellCast += Obj_AI_Hero_OnProcessSpellCast;
             Game.OnUpdate += Game_OnUpdate;
+            AntiGapcloser.OnEnemyGapcloser += AntiGapcloser_OnEnemyGapcloser;
 
-            Game.PrintChat("<b><font color=\"#FF3366\">Jinx#</font></b> - Loaded!");
+            var color = System.Drawing.Color.FromArgb(200, 0, 220, 144);
+            var hexargb = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+
+            Game.PrintChat("<b><font color=\"" + hexargb + "\">Jinx#</font></b> - Loaded!");
         }
+
+        private static void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        {
+            if (!E.IsReady())
+            {
+                return;
+            }
+
+            if (gapcloser.Sender.IsValidTarget(250) && Root.Item("autogap").GetValue<bool>())
+            {
+                var castPos = gapcloser.End;
+                E.Cast(castPos);
+            }
+        }
+
+        private static void Drawing_OnDraw(EventArgs args)
+        {
+            var wCircle = Root.Item("drawmyw").GetValue<Circle>();
+            if (wCircle.Active)
+            {
+                Render.Circle.DrawCircle(Player.Position, W.Range, wCircle.Color);
+            }
+
+            var qCircle = Root.Item("drawmyq").GetValue<Circle>();
+            if (qCircle.Active)
+            {
+                Render.Circle.DrawCircle(Player.Position, Q.Range + 40, qCircle.Color);
+            }
+        }
+
 
         private static void Obj_AI_Hero_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
+            // todo:
             if (sender.IsMe && args.SData.IsAutoAttack())
             {
                 int settime = 5000; // 5 seconds
-
                 var casttime = (sender.Spellbook.CastTime - Game.Time) * 1000;
                 var aatime = Math.Abs(casttime - sender.AttackCastDelay * 1000);
-
                 var aaacountinsettime = (int) (settime / aatime);
 
-
-                Console.WriteLine("Delay: " + sender.AttackCastDelay * 1000);
-
-                Console.WriteLine("CastTime: " + aatime);
-                Console.WriteLine("CanAA " + aaacountinsettime + " times in 5 seconds");
+                //Console.WriteLine("Delay: " + sender.AttackCastDelay * 1000);
+                //Console.WriteLine("CastTime: " + aatime);
+                //Console.WriteLine("CanAA " + aaacountinsettime + " times in 5 seconds");
             }
         }
 
@@ -171,6 +205,16 @@ namespace Jinx
             var aaacountinsettime = (int) (time / aatime);
 
             var minigunDmg = sender.GetAutoAttackDamage(target, false) * aaacountinsettime;
+            return (float) minigunDmg;
+        }
+
+        private static float RocketDamageOverTime(Obj_AI_Hero sender, Obj_AI_Hero target, int time)
+        {
+            var casttime = (sender.Spellbook.CastTime - Game.Time) * 1000;
+            var aatime = Math.Abs(casttime - sender.AttackCastDelay * 1000);
+            var aaacountinsettime = (int)(time / aatime);
+
+            var minigunDmg = sender.GetAutoAttackDamage(target, true) * aaacountinsettime;
             return (float) minigunDmg;
         }
 
@@ -236,7 +280,7 @@ namespace Jinx
             var aiHero = target as Obj_AI_Hero;
             if (aiHero != null && unit.IsMe)
             {
-                if (aiHero.Distance(Player.ServerPosition) > 525)
+                if (aiHero.Distance(Player.ServerPosition) > 525 + RocketRange)
                 {
                     if (Player.GetSpellDamage(aiHero, SpellSlot.W) / W.Delay >
                         Player.GetAutoAttackDamage(aiHero, true) * (1 / Player.AttackDelay))
@@ -249,7 +293,7 @@ namespace Jinx
 
         private static void Game_OnUpdate(EventArgs args)
         {
-            RocketRange = new[] { 75, 75, 100, 125, 150, 175 }[Q.Level];
+            RocketRange = new[] { 75, 75, 100, 125, 150, 175 } [Q.Level];
 
             if (Root.Item("useskin").GetValue<bool>())
             {
@@ -259,6 +303,18 @@ namespace Jinx
             if (Root.Item("useflee").GetValue<KeyBind>().Active)
             {
                 Orbwalking.Orbwalk(null, Game.CursorPos);
+            }
+
+            if (E.IsReady())
+            {
+                foreach (var target in ObjectManager.Get<Obj_AI_Hero>().Where(h => h.IsValidTarget(E.Range)))
+                {
+                    if (Root.Item("autoe").GetValue<bool>())
+                        E.CastIfHitchanceEquals(target, HitChance.Immobile);
+
+                    if (Root.Item("autoedash").GetValue<bool>())
+                        E.CastIfHitchanceEquals(target, HitChance.Dashing);
+                }
             }
 
             var hasRockets = Player.GetSpell(SpellSlot.Q).ToggleState == 2;
@@ -301,7 +357,6 @@ namespace Jinx
                                 {
                                     Orbwalker.ForceTarget(GetHarassObj(qtarget));
                                     Orbwalking.Orbwalk(GetHarassObj(qtarget), Game.CursorPos);
-                                    return;
                                 }
 
                                 Q.Cast();
@@ -332,7 +387,7 @@ namespace Jinx
                     {
                         if (Player.ManaPercent > 25 || W.GetDamage(wtarget) + Player.GetAutoAttackDamage(wtarget, true) > wtarget.Health)
                         {
-                            if (wtarget.Distance(Player.ServerPosition) > 500 + RocketRange)
+                            if (wtarget.Distance(Player.ServerPosition) > 525 + RocketRange)
                             {
                                 if (!(Player.GetAutoAttackDamage(wtarget, true) * 2 > wtarget.Health) ||
                                     !Orbwalking.InAutoAttackRange(wtarget))
@@ -341,14 +396,6 @@ namespace Jinx
                                 }
                             }
                         }
-                    }
-                }
-
-                if (Root.Item("useecombo").GetValue<bool>() && E.IsReady())
-                {
-                    foreach (var target in ObjectManager.Get<Obj_AI_Hero>().Where(h => h.IsValidTarget(400) && h.IsMelee()))
-                    {
-                        E.CastIfHitchanceEquals(target, HitChance.VeryHigh);
                     }
                 }
             }
@@ -480,18 +527,6 @@ namespace Jinx
                         Q.Cast();
                     }
                 }            
-            }
-
-            if (E.IsReady())
-            {
-                foreach (var target in ObjectManager.Get<Obj_AI_Hero>().Where(h => h.IsValidTarget(E.Range)))
-                {
-                    if (Root.Item("autoe").GetValue<bool>())
-                        E.CastIfHitchanceEquals(target, HitChance.Immobile);
-
-                    if (Root.Item("autoedash").GetValue<bool>())
-                        E.CastIfHitchanceEquals(target, HitChance.Dashing);
-                }
             }
 
             if (Root.Item("autor").GetValue<bool>() || CanCombo)
@@ -671,8 +706,5 @@ namespace Jinx
 
             return idmg + edmg;
         }
-
-
-
     }
 }
