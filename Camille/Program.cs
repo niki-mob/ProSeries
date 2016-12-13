@@ -163,6 +163,7 @@ namespace Camille
                 Obj_AI_Base.OnIssueOrder += CamilleOnIssueOrder;
                 GameObject.OnCreate += Obj_GeneralParticleEmitter_OnCreate;
 
+                // test
                 var color = System.Drawing.Color.FromArgb(200, 0, 220, 144);
                 var hexargb = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
 
