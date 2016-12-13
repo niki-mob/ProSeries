@@ -99,6 +99,7 @@ namespace Camille
                 tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("blocke", "Dont E Leave Ultimatum")).SetValue(true);
+                    .SetValue(new Slider((int) 165f, 0, (int) E.Range));
                 comenu.AddSubMenu(tcmenu);
 
                 RootMenu.AddSubMenu(comenu);
@@ -114,6 +115,8 @@ namespace Camille
                 clmenu.AddItem(new MenuItem("clearnearenemy", "Dont Clear Near Enemy")).SetValue(true);
                 clmenu.AddItem(new MenuItem("useqclear", "Use Q")).SetValue(true);
                 clmenu.AddItem(new MenuItem("usewclear", "Use W")).SetValue(true);
+                clmenu.AddItem(new MenuItem("usewlane", "-> Use In Lane")).SetValue(false);
+                clmenu.AddItem(new MenuItem("usewlanehit", "-> Minimum Hit in Lane")).SetValue(new Slider(3, 1, 6));
                 clmenu.AddItem(new MenuItem("useeclear", "Use E")).SetValue(true);
                 clmenu.AddItem(new MenuItem("clearmana", "Clear Mana %")).SetValue(new Slider(55));
                 RootMenu.AddSubMenu(clmenu);
@@ -460,7 +463,10 @@ namespace Camille
 
             if (RootMenu.Item("useclear").GetValue<KeyBind>().Active)
             {
-                Clear();
+                if (Player.Mana / Player.MaxMana * 100 > RootMenu.Item("clearmana").GetValue<Slider>().Value)
+                {
+                    Clear();
+                }
             }
 
             if (RootMenu.Item("useharass").GetValue<KeyBind>().Active)
@@ -505,6 +511,21 @@ namespace Camille
         {
             var minions = MinionManager.GetMinions(Player.Position, W.Range,
                 MinionTypes.All, MinionTeam.Neutral, MinionOrderTypes.MaxHealth);
+
+
+            if (RootMenu.Item("usewlane").GetValue<bool>() && W.IsReady())
+            {
+                var minz = MinionManager.GetMinions(Player.Position, W.Range);
+
+                var farmradius =
+                    MinionManager.GetBestCircularFarmLocation(minz.Select(x => x.Position.To2D()).ToList(), 165f,
+                        W.Range);
+
+                if (farmradius.MinionsHit >= RootMenu.Item("usewlanehit").GetValue<Slider>().Value)
+                {
+                    W.Cast(farmradius.Position);
+                }
+            }
 
             foreach (var unit in minions.Where(m => !m.Name.Contains("Mini")))
             {
@@ -555,6 +576,11 @@ namespace Camille
                 if (combo)
                 {
                     if (!RootMenu.Item("useecombo").GetValue<bool>()) 
+                    {
+                        return;
+                    }
+
+                    if (Player.Distance(p) < RootMenu.Item("minerange").GetValue<Slider>().Value)
                     {
                         return;
                     }
