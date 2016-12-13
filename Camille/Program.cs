@@ -423,8 +423,7 @@ namespace Camille
                 return;
             }
 
-            foreach (var timestamp in 
-                rPoint.Select(entry => entry.Key).Where(timestamp => Game.Time - timestamp > 4f))
+            foreach (var timestamp in rPoint.Select(entry => entry.Key).Where(timestamp => Game.Time - timestamp > 4f))
             {
                 rPoint.Remove(timestamp);
                 break;
@@ -558,20 +557,16 @@ namespace Camille
 
             if (combo)
             {
-                if (!RootMenu.Item("useecombo").GetValue<bool>())
+                if (!RootMenu.Item("useecombo").GetValue<bool>() ||
+                    rPoint.Any(entry => p.Distance(entry.Value.Position) > 500)) 
                 {
                     return;
                 }
 
-                if (rPoint.Any(entry => p.Distance(entry.Value.Position) > 450))
+                if (p.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
                 {
                     return;
                 }
-            }
-
-            if (combo && p.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
-            {
-                return;
             }
 
             var posChecked = 0;
@@ -598,9 +593,9 @@ namespace Camille
 
                     var desiredPos = new Vector2(xPos, yPos);
 
-                    if (rPoint.Any(entry => p.Distance(desiredPos.To3D()) > 450))
+                    if (rPoint.Any(entry => p.Distance(desiredPos.To3D()) > 500))
                     {
-                        return;
+                        continue;
                     }
 
                     if (desiredPos.IsWall())
