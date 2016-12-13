@@ -85,8 +85,8 @@ namespace Camille
 
                 var whemenu = new Menu("R Focus Targets", "whemenu").SetFontStyle(FontStyle.Regular, SharpDX.Color.Cyan);
                 foreach (var hero in HeroManager.Enemies)
-                    whemenu.AddItem(new MenuItem("whenR" + hero.ChampionName, hero.ChampionName))
-                        .SetValue(false).SetTooltip("R Only on " + hero.ChampionName);
+                    whemenu.AddItem(new MenuItem("whR" + hero.ChampionName, hero.ChampionName))
+                        .SetValue(false).SetTooltip("R Only on " + hero.ChampionName).DontSave();
                 abmenu.AddSubMenu(whemenu);
 
                 abmenu.AddItem(new MenuItem("useqcombo", "Use Q")).SetValue(true);
@@ -229,7 +229,7 @@ namespace Camille
         private static bool RKappa()
         {
             return RootMenu.SubMenu("cmenu").SubMenu("abmenu").SubMenu("whemenu").Items.Any(i => i.GetValue<bool>()) &&
-                 Player.GetEnemiesInRange(E.Range*2).Any(ez => RootMenu.Item("whenR" + ez.ChampionName).GetValue<bool>());
+                 Player.GetEnemiesInRange(E.Range*2).Any(ez => RootMenu.Item("whR" + ez.ChampionName).GetValue<bool>());
         }
 
         private static void CamilleOnIssueOrder(Obj_AI_Base sender, GameObjectIssueOrderEventArgs args)
@@ -673,7 +673,7 @@ namespace Camille
             {
                 if (R.IsReady() && ComboDamage(target) >= target.Health)
                 {
-                    if (!tt || tt && !RKappa() || RootMenu.Item("whenR" + target.ChampionName).GetValue<bool>())
+                    if (!tt || tt && !RKappa() || RootMenu.Item("whR" + target.ChampionName).GetValue<bool>())
                     { 
                         R.CastOnUnit(target);
                     }
