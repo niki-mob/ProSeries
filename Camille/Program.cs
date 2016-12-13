@@ -99,7 +99,7 @@ namespace Camille
                 tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("blocke", "Dont E Leave Ultimatum")).SetValue(true);
-                    .SetValue(new Slider((int) 165f, 0, (int) E.Range));
+                tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
                 comenu.AddSubMenu(tcmenu);
 
                 RootMenu.AddSubMenu(comenu);
