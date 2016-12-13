@@ -237,7 +237,7 @@ namespace Camille
                 var issueOrderPos = args.TargetPosition;
                 if (sender.IsMe && args.Order == GameObjectOrder.MoveTo)
                 {
-                    if (Utils.GameTimeTickCount - TickLimiter >= 100)
+                    if (Utils.GameTimeTickCount - TickLimiter >= 1000)
                     {
                         var issueOrderDirection = (issueOrderPos - Player.Position).To2D().Normalized();
 
@@ -262,7 +262,7 @@ namespace Camille
                 var issueOrderPos = args.TargetPosition;
                 if (sender.IsMe && args.Order == GameObjectOrder.MoveTo)
                 {
-                    if (Utils.GameTimeTickCount - TickLimiter >= 100)
+                    if (Utils.GameTimeTickCount - TickLimiter >= 1000)
                     {
                         var issueOrderDirection = (issueOrderPos - Player.Position).To2D().Normalized();
 
@@ -423,14 +423,15 @@ namespace Camille
                 return;
             }
 
-            foreach (var timestamp in rPoint.Select(entry => entry.Key).Where(timestamp => Game.Time - timestamp > 4f))
+            foreach (var entry in rPoint)
             {
-                rPoint.Remove(timestamp);
-                break;
+                var timestamp = entry.Key;
+                if (Game.Time - timestamp > 4f)
+                {
+                    rPoint.Remove(timestamp);
+                    break;
+                }
             }
-
-            tt = Player.CountAlliesInRange(1500) > 1 && Player.CountEnemiesInRange(1350) > 2 ||
-                 Player.CountEnemiesInRange(1200) > 2;
 
             if (RootMenu.Item("useflee").GetValue<KeyBind>().Active)
             {
@@ -478,6 +479,9 @@ namespace Camille
                     Harass();
                 }
             }
+
+            tt = Player.CountAlliesInRange(1500) > 1 && Player.CountEnemiesInRange(1350) > 2 ||
+                 Player.CountEnemiesInRange(1200) > 2;
         }
 
         static void Combo()
@@ -557,8 +561,12 @@ namespace Camille
 
             if (combo)
             {
-                if (!RootMenu.Item("useecombo").GetValue<bool>() ||
-                    rPoint.Any(entry => p.Distance(entry.Value.Position) > 500)) 
+                if (!RootMenu.Item("useecombo").GetValue<bool>()) 
+                {
+                    return;
+                }
+
+                if (rPoint.Any(entry => p.Distance(entry.Value.Position) > 450)) 
                 {
                     return;
                 }
@@ -575,6 +583,7 @@ namespace Camille
             var radiusIndex = 0;
 
             var candidatePos = new List<Vector2>();
+            candidatePos.Clear();
 
             while (posChecked < maxPosChecked)
             {
@@ -593,7 +602,7 @@ namespace Camille
 
                     var desiredPos = new Vector2(xPos, yPos);
 
-                    if (rPoint.Any(entry => p.Distance(desiredPos.To3D()) > 500))
+                    if (rPoint.Any(entry => p.Distance(desiredPos.To3D()) > 450))
                     {
                         continue;
                     }
@@ -616,7 +625,6 @@ namespace Camille
                     W.Cast(p);
 
                 E.Cast(bestWallPoint);
-                candidatePos.Clear();
             }
         }
 
@@ -693,7 +701,7 @@ namespace Camille
             if (unit == null)
                 return 0d;
 
-            var qq = new[] { 2, 3, 3, 4 } [(Math.Min(Player.Level, 18) / 6)];
+            var qq = new[] { 2, 3, 4, 4 } [(Math.Min(Player.Level, 18) / 6)];
 
             return Math.Min(qq, Player.Mana / Q.ManaCost) * Qdmg(unit, false) + Wdmg(unit) +
                    RBonus(Player.GetAutoAttackDamage(unit, true), unit) * qq + Edmg(unit);
@@ -707,7 +715,7 @@ namespace Camille
             if (Q.IsReady() && target != null)
             {
                 dmg += Player.CalcDamage(target, Damage.DamageType.Physical, Player.GetAutoAttackDamage(target, true) +
-                    (new[] {0.2, 0.25, 0.30, 0.35, 0.40} [Q.Level - 1] * (Player.BaseAttackDamage + Player.FlatPhysicalDamageMod)));
+                    (new[]  { 0.2, 0.25, 0.30, 0.35, 0.40 } [Q.Level - 1] * (Player.BaseAttackDamage + Player.FlatPhysicalDamageMod)));
 
                 if (aareset)
                     dmg += (RBonus(Player.GetAutoAttackDamage(target), target)); // aa reset
