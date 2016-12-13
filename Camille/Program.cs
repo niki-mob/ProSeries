@@ -95,6 +95,7 @@ namespace Camille
                 abmenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
                 comenu.AddSubMenu(abmenu);
 
+                tcmenu.AddItem(new MenuItem("useehelper", "Use E Assists")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("wdash", "Always W While Dashing")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
@@ -235,6 +236,11 @@ namespace Camille
 
         private static void CamilleOnIssueOrder(Obj_AI_Base sender, GameObjectIssueOrderEventArgs args)
         {
+            if (!RootMenu.Item("useehelper").GetValue<bool>())
+            {
+                return;
+            }
+
             if (OnWall && E.IsReady() && RootMenu.Item("usecombo").GetValue<KeyBind>().Active)
             {
                 var issueOrderPos = args.TargetPosition;
