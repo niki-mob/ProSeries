@@ -57,7 +57,7 @@ namespace Camille
 
                 Q = new Spell(SpellSlot.Q, 135f);
                 W = new Spell(SpellSlot.W, 625f);
-                E = new Spell(SpellSlot.E, 1000f);
+                E = new Spell(SpellSlot.E, 975f);
                 R = new Spell(SpellSlot.R, 375f);
 
                 RootMenu = new Menu("Camille#", "camille", true);
@@ -553,7 +553,7 @@ namespace Camille
 
         static void UseW(Obj_AI_Base target)
         {
-            if (OnWall || CanW() == false || IsDashing || ChargingW)
+            if (OnWall || CanW(target) == false || ChargingW)
             {
                 return;
             }
@@ -646,7 +646,13 @@ namespace Camille
                 if (E.IsReady() && bestWallPoint.IsValid())
                 {
                     if (RootMenu.Item("wdash").GetValue<bool>() && combo)
-                        W.Cast(p);
+                    {
+                        var eTravelTime = 0f; // todo
+                        if (eTravelTime <= 2000)
+                        {
+                            W.Cast(p);
+                        }
+                    }
 
                     if (E.Cast(bestWallPoint))
                     {
@@ -699,11 +705,16 @@ namespace Camille
             }
         }
 
-        static bool CanW()
+        static bool CanW(Obj_AI_Base target)
         {
             const float wCastTime = 2000f;
 
-            if (OnWall || HasQ2 || IsDashing)
+            if (OnWall || HasQ2)
+            {
+                return false;
+            }
+
+            if (Player.GetAutoAttackDamage(target, true) * 3 >= target.Health)
             {
                 return false;
             }
@@ -775,7 +786,7 @@ namespace Camille
                 dmg += Player.CalcDamage(target, Damage.DamageType.Physical,
                     (new[] { 65, 95, 125, 155, 185 } [W.Level - 1] + (0.6 * Player.FlatPhysicalDamageMod)));
 
-                var wpc = new[] { 6, 6.5, 7, 7.5, 4 };
+                var wpc = new[] { 6, 6.5, 7, 7.5, 8 };
                 var pct = wpc[W.Level - 1];
 
                 if (Player.FlatPhysicalDamageMod >= 100)
