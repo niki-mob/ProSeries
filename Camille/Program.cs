@@ -17,12 +17,12 @@ namespace Camille
         internal static Obj_AI_Hero Player => ObjectManager.Player;
         internal static HpBarIndicator BarIndicator = new HpBarIndicator();
 
+        internal static bool tt;
         internal static bool HasQ2 => Player.HasBuff(Q2BuffName);
         internal static bool HasQ => Player.HasBuff(QBuffName);
         internal static bool OnWall => Player.HasBuff(WallBuffName) || E.Instance.Name != "CamilleE";
         internal static bool IsDashing => Player.HasBuff(EDashBuffName + "1") || Player.HasBuff(EDashBuffName + "2");
         internal static bool ChargingW => Player.HasBuff(WBuffName);
-
         internal static string WBuffName => "camillewconeslashcharge";
         internal static string EDashBuffName => "camilleedash";
         internal static string WallBuffName => "camilleedashtoggle"; 
@@ -95,8 +95,6 @@ namespace Camille
                 abmenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
                 comenu.AddSubMenu(abmenu);
 
-                tcmenu.AddItem(new MenuItem("useehelper", "Use E Assists")).SetValue(true);
-                tcmenu.AddItem(new MenuItem("wdash", "Always W While Dashing")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("blocke", "Dont E Leave Ultimatum")).SetValue(true);
@@ -236,11 +234,6 @@ namespace Camille
 
         private static void CamilleOnIssueOrder(Obj_AI_Base sender, GameObjectIssueOrderEventArgs args)
         {
-            if (!RootMenu.Item("useehelper").GetValue<bool>())
-            {
-                return;
-            }
-
             if (OnWall && E.IsReady() && RootMenu.Item("usecombo").GetValue<KeyBind>().Active)
             {
                 var issueOrderPos = args.TargetPosition;
@@ -248,14 +241,14 @@ namespace Camille
                 {
                     var issueOrderDirection = (issueOrderPos - Player.Position).To2D().Normalized();
 
-                    var aiHero = TargetSelector.GetTarget(E.Range + 750, TargetSelector.DamageType.Physical);
+                    var aiHero = TargetSelector.GetTarget(E.Range + 100, TargetSelector.DamageType.Physical);
                     if (aiHero != null)
                     {
                         var heroDirection = (aiHero.Position - Player.Position).To2D().Normalized();
-                        if (heroDirection.AngleBetween(issueOrderDirection) > 20)
+                        if (heroDirection.AngleBetween(issueOrderDirection) > 10)
                         {
                             args.Process = false;
-                            Orbwalking.Orbwalk(aiHero, aiHero.Position);
+                            Player.IssueOrder(GameObjectOrder.MoveTo, aiHero.ServerPosition, false);
                             //Console.WriteLine("Redirected @ Hero");
                         }
                     }
@@ -269,16 +262,16 @@ namespace Camille
                 {
                     var issueOrderDirection = (issueOrderPos - Player.Position).To2D().Normalized();
 
-                    var aiMob = MinionManager.GetMinions(Player.Position, E.Range,
-                            MinionTypes.All, MinionTeam.Neutral, MinionOrderTypes.MaxHealth).FirstOrDefault();
+                    var aiMob = MinionManager.GetMinions(Player.Position, W.Range + 100,
+                        MinionTypes.All, MinionTeam.Neutral, MinionOrderTypes.MaxHealth).FirstOrDefault();
 
                     if (aiMob != null)
                     {
                         var heroDirection = (aiMob.Position - Player.Position).To2D().Normalized();
-                        if (heroDirection.AngleBetween(issueOrderDirection) > 20)
+                        if (heroDirection.AngleBetween(issueOrderDirection) > 10)
                         {
                             args.Process = false;
-                            Orbwalking.Orbwalk(null, aiMob.Position);
+                            Player.IssueOrder(GameObjectOrder.MoveTo, aiMob.ServerPosition, false);
                             //Console.WriteLine("Redirected @ Mob");
                         }
                     }
@@ -419,19 +412,12 @@ namespace Camille
 
         private static void Game_OnUpdate(EventArgs args)
         {
-            if (Player.IsDead)
-            {
-                return;
-            }
+            Orbwalker.SetAttack(!ChargingW);
 
-            foreach (var entry in rPoint)
+            foreach (var timestamp in rPoint.Select(entry => entry.Key).Where(timestamp => Game.Time - timestamp > 4f))
             {
-                var timestamp = entry.Key;
-                if (Game.Time - timestamp > 4f)
-                {
-                    rPoint.Remove(timestamp);
-                    break;
-                }
+                rPoint.Remove(timestamp);
+                break;
             }
 
             if (RootMenu.Item("useflee").GetValue<KeyBind>().Active)
@@ -517,36 +503,43 @@ namespace Camille
         private static void Clear()
         {
             var minions = MinionManager.GetMinions(Player.Position, W.Range,
-                MinionTypes.All, MinionTeam.Neutral, MinionOrderTypes.MaxHealth);
+                MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
 
-
-            if (RootMenu.Item("usewlane").GetValue<bool>() && W.IsReady())
+            foreach (var unit in minions)
             {
-                var minz = MinionManager.GetMinions(Player.Position, W.Range);
-
-                var farmradius =
-                    MinionManager.GetBestCircularFarmLocation(minz.Select(x => x.Position.To2D()).ToList(), 165f,
-                        W.Range);
-
-                if (farmradius.MinionsHit >= RootMenu.Item("usewlanehit").GetValue<Slider>().Value)
+                if (!unit.Name.Contains("Mini"))
                 {
-                    W.Cast(farmradius.Position);
+                    if (!W.IsReady() || !RootMenu.Item("usewclear").GetValue<bool>())
+                    {
+                        if (!ChargingW && RootMenu.Item("useeclear").GetValue<bool>())
+                            UseE(unit.ServerPosition, false);
+                    }
+
+                    if (RootMenu.Item("usewclear").GetValue<bool>())
+                    {
+                        UseW(unit);
+                    }
                 }
-            }
+                else
+                {
+                    if (RootMenu.Item("usewlane").GetValue<bool>() && W.IsReady())
+                    {
+                        var farmradius =
+                            MinionManager.GetBestCircularFarmLocation(
+                                minions.Where(x => x.IsMinion).Select(x => x.Position.To2D()).ToList(), 165f, W.Range);
 
-            foreach (var unit in minions.Where(m => !m.Name.Contains("Mini")))
-            {
-                if (!W.IsReady() && !ChargingW && RootMenu.Item("useeclear").GetValue<bool>())
-                    UseE(unit.ServerPosition, false);
-
-                if (RootMenu.Item("usewclear").GetValue<bool>())
-                    UseW(unit);
+                        if (farmradius.MinionsHit >= RootMenu.Item("usewlanehit").GetValue<Slider>().Value)
+                        {
+                            W.Cast(farmradius.Position);
+                        }
+                    }
+                }
             }
         }
 
         static void UseQ(AttackableUnit t)
         {
-            if (Q.IsReady())
+            if (Q.IsReady() && t.Position.Distance(Player.ServerPosition) <= Q.Range)
             {
                 if (!HasQ || HasQ2)
                 {
@@ -573,107 +566,99 @@ namespace Camille
 
         static void UseE(Vector3 p, bool combo = true)
         {
-            try
+            if (IsDashing || OnWall || !E.IsReady())
             {
-                if (IsDashing || OnWall || !E.IsReady())
+                return;
+            }
+
+            if (combo)
+            {
+                if (!RootMenu.Item("useecombo").GetValue<bool>()) 
                 {
                     return;
                 }
 
-                if (combo)
+                if (Player.Distance(p) < RootMenu.Item("minerange").GetValue<Slider>().Value)
                 {
-                    if (!RootMenu.Item("useecombo").GetValue<bool>()) 
-                    {
-                        return;
-                    }
+                    return;
+                }
 
-                    if (Player.Distance(p) < RootMenu.Item("minerange").GetValue<Slider>().Value)
+                if (RootMenu.Item("blocke").GetValue<bool>())
+                {
+                    if (rPoint.Any(entry => p.Distance(entry.Value.Position) > 450))
                     {
                         return;
                     }
+                }
+
+                if (p.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
+                {
+                    return;
+                }
+            }
+
+            var posChecked = 0;
+            var maxPosChecked = 80;
+            var posRadius = 145;
+            var radiusIndex = 0;
+
+            var candidatePos = new List<Vector2>();
+
+            while (posChecked < maxPosChecked)
+            {
+                radiusIndex++;
+
+                var curRadius = radiusIndex * (0x2 * posRadius);
+                var curCurcleChecks = (int) Math.Ceiling((2 * Math.PI * curRadius) / (2 * (double) posRadius));
+
+                for (var i = 1; i < curCurcleChecks; i++)
+                {
+                    posChecked++;
+
+                    var cRadians = (0x2 * Math.PI / (curCurcleChecks - 1)) * i;
+                    var xPos = (float) Math.Floor(p.X + curRadius * Math.Cos(cRadians));
+                    var yPos = (float) Math.Floor(p.Y + curRadius * Math.Sin(cRadians));
+
+                    var desiredPos = new Vector2(xPos, yPos);
 
                     if (RootMenu.Item("blocke").GetValue<bool>())
                     {
                         if (rPoint.Any(entry => p.Distance(entry.Value.Position) > 450))
                         {
-                            return;
+                            continue;
                         }
                     }
 
-                    if (p.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
+                    if (desiredPos.IsWall())
                     {
-                        return;
-                    }
-                }
-
-                var posChecked = 0;
-                var maxPosChecked = 80;
-                var posRadius = 145;
-                var radiusIndex = 0;
-
-                var candidatePos = new List<Vector2>();
-
-                while (posChecked < maxPosChecked)
-                {
-                    radiusIndex++;
-
-                    var curRadius = radiusIndex * (0x2 * posRadius);
-                    var curCurcleChecks = (int) Math.Ceiling((2 * Math.PI * curRadius) / (2 * (double) posRadius));
-
-                    for (var i = 1; i < curCurcleChecks; i++)
-                    {
-                        posChecked++;
-
-                        var cRadians = (0x2 * Math.PI / (curCurcleChecks - 1)) * i;
-                        var xPos = (float) Math.Floor(p.X + curRadius * Math.Cos(cRadians));
-                        var yPos = (float) Math.Floor(p.Y + curRadius * Math.Sin(cRadians));
-
-                        var desiredPos = new Vector2(xPos, yPos);
-
-                        if (RootMenu.Item("blocke").GetValue<bool>())
-                        {
-                            if (rPoint.Any(entry => p.Distance(entry.Value.Position) > 450))
-                            {
-                                continue;
-                            }
-                        }
-
-                        if (desiredPos.IsWall())
-                        {
-                            candidatePos.Add(desiredPos);
-                        }
-                    }
-                }
-
-                var bestWallPoint =
-                    candidatePos.Where(x => Player.Distance(x) <= E.Range && x.Distance(p) <= E.Range)
-                        .OrderBy(x => x.Distance(p))
-                        .FirstOrDefault();
-
-                if (E.IsReady() && bestWallPoint.IsValid())
-                {
-                    if (RootMenu.Item("wdash").GetValue<bool>() && combo)
-                    {
-                        var eTravelTime = 0f; // todo
-                        if (eTravelTime <= 2000)
-                        {
-                            W.Cast(p);
-                        }
-                    }
-
-                    if (E.Cast(bestWallPoint))
-                    {
-                        candidatePos.Clear();
+                        candidatePos.Add(desiredPos);
                     }
                 }
             }
-            catch (Exception e)
+
+            var bestWallPoint =
+                candidatePos.Where(x => Player.Distance(x) <= E.Range && x.Distance(p) <= E.Range)
+                    .OrderBy(x => x.Distance(p))
+                    .FirstOrDefault();
+
+            if (E.IsReady() && bestWallPoint.IsValid())
             {
-                Console.WriteLine(e);
+                if (W.IsReady() && RootMenu.Item("usewcombo").GetValue<bool>() && combo)
+                {
+                    int speedest = 1350;
+                    var meToWall = 1000 * (500 + (Player.Distance(bestWallPoint) / speedest));
+                    var wallToHero = 1000 * (250 + (bestWallPoint.Distance(p) / speedest));
+
+                    if (meToWall + wallToHero > 1500)
+                    {
+                        W.Cast(p);
+                    }
+                }
+
+                E.Cast(bestWallPoint);
             }
         }
 
-        private static bool tt;
         static void UseR(Obj_AI_Hero target)
         {
             if (target.Distance(Player.ServerPosition) <= R.Range)
@@ -688,30 +673,6 @@ namespace Camille
             }
         }
 
-        static void Secure(bool i, bool o)
-        {
-            return;
-
-            if (i && Q.IsReady())
-            {
-                foreach (var hero in HeroManager.Enemies.Where(x => x.IsValidTarget(Q.Range)))
-                {
-                    // todo: qdmg;
-                    UseQ(hero);
-                }
-            }
-
-            if (o)
-            {
-                foreach (var hero in HeroManager.Enemies.Where(x => x.IsValidTarget(E.Range * 2)))
-                {
-                    // todo: qdmg;
-                    UseE(hero.ServerPosition);
-                    UseQ(hero);
-                }
-            }
-        }
-
         static bool CanW(Obj_AI_Base target)
         {
             const float wCastTime = 2000f;
@@ -721,9 +682,12 @@ namespace Camille
                 return false;
             }
 
-            if (Player.GetAutoAttackDamage(target, true) * 3 >= target.Health)
+            if (Orbwalking.InAutoAttackRange(target))
             {
-                return false;
+                if (Player.GetAutoAttackDamage(target, true) * 1 + Qdmg(target) >= target.Health)
+                {
+                    return false;
+                }
             }
 
             var b = Player.GetBuff(QBuffName);
