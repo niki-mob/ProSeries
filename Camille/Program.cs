@@ -415,9 +415,12 @@ namespace Camille
                                 #endregion
                             }
 
-                            if (Q.IsReady() && RootMenu.Item("useqclear").GetValue<bool>())
+                            if (Q.IsReady())
                             {
-                                UseQ(unit);
+                                if (RootMenu.Item("useqclear").GetValue<bool>())
+                                {
+                                    UseQ(unit);
+                                }
                             }
                         }
                     }
@@ -562,7 +565,7 @@ namespace Camille
         {
             if (Q.IsReady())
             {
-                if (!HasQ || HasQ2)
+                if (!HasQ || HasQ2 || t is Obj_AI_Base && Qdmg((Obj_AI_Base) t, false) >= t.Health)
                 {
                     if (Q.Cast())
                     {
@@ -771,7 +774,7 @@ namespace Camille
         }
 
 
-        private static double Qdmg(Obj_AI_Base target, bool aareset = true)
+        private static double Qdmg(Obj_AI_Base target, bool includeq2 = true)
         {
             double dmg = 0;
 
@@ -788,10 +791,10 @@ namespace Camille
 
                 var dmgtrue = Player.CalcDamage(target, Damage.DamageType.True, dmgreg * pct / 100);
 
-                dmg += dmgtrue;
-
-                if (aareset)
-                    dmg += (RBonus(Player.GetAutoAttackDamage(target), target)); // aa reset
+                if (includeq2)
+                {
+                    dmg += dmgtrue;
+                }
             }
 
             return dmg;
