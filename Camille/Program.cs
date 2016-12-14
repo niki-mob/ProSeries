@@ -60,6 +60,8 @@ namespace Camille
                 E = new Spell(SpellSlot.E, 975f);
                 R = new Spell(SpellSlot.R, 375f);
 
+                W.SetSkillshot(1.5f, (float) (45 * Math.PI/180), float.MaxValue, false, SkillshotType.SkillshotCone);
+
                 RootMenu = new Menu("Camille#", "camille", true);
 
                 var omenu = new Menu("-] Orbwalk", "orbwalk");
@@ -93,13 +95,14 @@ namespace Camille
                 abmenu.AddItem(new MenuItem("usewcombo", "Use W")).SetValue(true);
                 abmenu.AddItem(new MenuItem("useecombo", "Use E")).SetValue(true);
                 abmenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
-                comenu.AddSubMenu(abmenu);
 
-                tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(false);
+                tcmenu.AddItem(new MenuItem("wdash", "Style Points +")).SetValue(true);
+                tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("blocke", "Dont E Leave Ultimatum")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
                 comenu.AddSubMenu(tcmenu);
+                comenu.AddSubMenu(abmenu);
 
                 RootMenu.AddSubMenu(comenu);
 
@@ -348,7 +351,7 @@ namespace Camille
                     {
                         #region LaneClear Q
 
-                        if (Player.CountEnemiesInRange(1000) < 1 || !RootMenu.Item("clearnearenemy").GetValue<bool>() || Player.UnderAllyTurret())
+                        if (Player.CountEnemiesInRange(1000) < 1 || Player.UnderAllyTurret() || !RootMenu.Item("clearnearenemy").GetValue<bool>())
                         {
                             if (aiBase.UnderTurret(true) && Player.CountEnemiesInRange(1000) > 0 && !Player.UnderAllyTurret())
                             {
@@ -383,25 +386,30 @@ namespace Camille
                     var unit = args.Target as AttackableUnit;
                     if (unit != null)
                     {
-                        // if jungle minion
-                        var m = unit as Obj_AI_Minion;
-                        if (m != null && !m.CharData.BaseSkinName.StartsWith("sru_plant"))
+                        if (Player.CountEnemiesInRange(1000) < 1 
+                            || !RootMenu.Item("clearnearenemy").GetValue<bool>())
                         {
-                            #region AA -> Q
-                            if (Q.IsReady() && RootMenu.Item("useqclear").GetValue<bool>())
+                            // if jungle minion
+                            var m = unit as Obj_AI_Minion;
+                            if (m != null && !m.CharData.BaseSkinName.StartsWith("sru_plant"))
                             {
-                                if (m.Position.Distance(Player.ServerPosition) <= Q.Range + 90)
+                                #region AA -> Q
+
+                                if (Q.IsReady() && RootMenu.Item("useqclear").GetValue<bool>())
                                 {
-                                    UseQ(m);
+                                    if (m.Position.Distance(Player.ServerPosition) <= Q.Range + 90)
+                                    {
+                                        UseQ(m);
+                                    }
                                 }
+
+                                #endregion
                             }
 
-                            #endregion
-                        }
-
-                        if (Q.IsReady() && !HeroManager.Enemies.Any(x => x.IsValidTarget(1200)))
-                        {
-                            UseQ(unit);
+                            if (Q.IsReady())
+                            {
+                                UseQ(unit);
+                            }
                         }
                     }
 
@@ -522,15 +530,19 @@ namespace Camille
                 }
                 else
                 {
-                    if (RootMenu.Item("usewlane").GetValue<bool>() && W.IsReady())
+                    if (Player.CountEnemiesInRange(1000) < 1 ||
+                        !RootMenu.Item("clearnearenemy").GetValue<bool>())
                     {
-                        var farmradius =
-                            MinionManager.GetBestCircularFarmLocation(
-                                minions.Where(x => x.IsMinion).Select(x => x.Position.To2D()).ToList(), 165f, W.Range);
-
-                        if (farmradius.MinionsHit >= RootMenu.Item("usewlanehit").GetValue<Slider>().Value)
+                        if (RootMenu.Item("usewlane").GetValue<bool>() && W.IsReady())
                         {
-                            W.Cast(farmradius.Position);
+                            var farmradius =
+                                MinionManager.GetBestCircularFarmLocation(
+                                    minions.Where(x => x.IsMinion).Select(x => x.Position.To2D()).ToList(), 165f, W.Range);
+
+                            if (farmradius.MinionsHit >= RootMenu.Item("usewlanehit").GetValue<Slider>().Value)
+                            {
+                                W.Cast(farmradius.Position);
+                            }
                         }
                     }
                 }
@@ -539,7 +551,7 @@ namespace Camille
 
         static void UseQ(AttackableUnit t)
         {
-            if (Q.IsReady() && t.Position.Distance(Player.ServerPosition) <= Q.Range)
+            if (Q.IsReady())
             {
                 if (!HasQ || HasQ2)
                 {
@@ -560,7 +572,7 @@ namespace Camille
 
             if (W.IsReady() && target.Distance(Player.ServerPosition) <= W.Range)
             {
-                W.Cast(target.ServerPosition);
+                W.CastIfHitchanceEquals(target, HitChance.VeryHigh);
             }
         }
 
@@ -643,15 +655,14 @@ namespace Camille
 
             if (E.IsReady() && bestWallPoint.IsValid())
             {
-                if (W.IsReady() && RootMenu.Item("usewcombo").GetValue<bool>() && combo)
+                if (W.IsReady() && RootMenu.Item("usewcombo").GetValue<bool>())
                 {
-                    int speedest = 1350;
-                    var meToWall = 1000 * (500 + (Player.Distance(bestWallPoint) / speedest));
-                    var wallToHero = 1000 * (250 + (bestWallPoint.Distance(p) / speedest));
-
-                    if (meToWall + wallToHero > 1500)
+                    if (combo && RootMenu.Item("wdash").GetValue<bool>())
                     {
-                        W.Cast(p);
+                        var mouseDir = Player.ServerPosition + (Game.CursorPos - Player.ServerPosition).Normalized() * 265;
+                        var wallPointReversed = bestWallPoint.Extend(mouseDir.To2D(), 1000);
+
+                        W.Cast(wallPointReversed);
                     }
                 }
 
