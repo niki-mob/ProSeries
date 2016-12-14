@@ -97,6 +97,7 @@ namespace Camille
                 abmenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
 
                 tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(true);
+                tcmenu.AddItem(new MenuItem("r55", "Only R Selected Target")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("blocke", "Dont E Leave Ultimatum")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
@@ -572,13 +573,13 @@ namespace Camille
 
             if (W.IsReady() && target.Distance(Player.ServerPosition) <= W.Range)
             {
-                W.CastIfHitchanceEquals(target, HitChance.VeryHigh);
+                W.CastIfHitchanceEquals(target, HitChance.High);
             }
         }
 
         static void UseE(Vector3 p, bool combo = true)
         {
-            if (IsDashing || OnWall || !E.IsReady())
+            if (IsDashing || OnWall || ChargingW || !E.IsReady())
             {
                 return;
             }
@@ -674,6 +675,23 @@ namespace Camille
         {
             if (target.Distance(Player.ServerPosition) <= R.Range)
             {
+                if (RootMenu.Item("r55").GetValue<bool>())
+                {
+                    var unit = TargetSelector.GetSelectedTarget();
+                    if (unit == null || unit.NetworkId != target.NetworkId)
+                    {
+                        return;
+                    }
+                }
+
+                if (Qdmg(target) + Player.GetAutoAttackDamage(target) * 2 >= target.Health)
+                {
+                    if (Orbwalking.InAutoAttackRange(target))
+                    {
+                        return;
+                    }
+                }
+
                 if (R.IsReady() && ComboDamage(target) >= target.Health)
                 {
                     if (!tt || tt && !RKappa() || RootMenu.Item("whR" + target.ChampionName).GetValue<bool>())
@@ -695,7 +713,7 @@ namespace Camille
 
             if (Orbwalking.InAutoAttackRange(target))
             {
-                if (Player.GetAutoAttackDamage(target, true) * 1 + Qdmg(target) >= target.Health)
+                if (Player.GetAutoAttackDamage(target, true) * 2 + Qdmg(target) >= target.Health)
                 {
                     return false;
                 }
