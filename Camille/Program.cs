@@ -565,11 +565,20 @@ namespace Camille
         {
             if (Q.IsReady())
             {
-                if (!HasQ || HasQ2 || t is Obj_AI_Base && Qdmg((Obj_AI_Base) t, false) >= t.Health)
+                if (!HasQ || HasQ2)
                 {
                     if (Q.Cast())
                     {
                         Orbwalking.ResetAutoAttackTimer(); // TEMP
+                    }
+                }
+                else
+                {
+                    {
+                        if (Q.Cast())
+                        {
+                            Orbwalking.ResetAutoAttackTimer(); // TEMP
+                        }
                     }
                 }
             }
