@@ -116,12 +116,13 @@ namespace Camille
 
                 var clmenu = new Menu("-] Clear", "clmenu");
                 clmenu.AddItem(new MenuItem("clearnearenemy", "Dont Clear Near Enemy")).SetValue(true);
+                clmenu.AddItem(new MenuItem("t11", "Use Hydra")).SetValue(true);
                 clmenu.AddItem(new MenuItem("useqclear", "Use Q")).SetValue(true);
                 clmenu.AddItem(new MenuItem("usewclear", "Use W")).SetValue(true);
                 clmenu.AddItem(new MenuItem("usewlane", "-> Use In Lane")).SetValue(false);
                 clmenu.AddItem(new MenuItem("usewlanehit", "-> Minimum Hit in Lane")).SetValue(new Slider(3, 1, 6));
                 clmenu.AddItem(new MenuItem("useeclear", "Use E")).SetValue(true);
-                clmenu.AddItem(new MenuItem("clearmana", "Clear Mana %")).SetValue(new Slider(55));
+                clmenu.AddItem(new MenuItem("clearmana", "Clear Mana %")).SetValue(new Slider(35));
                 RootMenu.AddSubMenu(clmenu);
 
                 var fmenu = new Menu("-] Flee", "fmenu");
@@ -338,12 +339,15 @@ namespace Camille
 
                         if (!Q.IsReady() || HasQ && !HasQ2)
                         {
-                            if (Items.CanUseItem(3077))
-                                Items.UseItem(3077);
-                            if (Items.CanUseItem(3074))
-                                Items.UseItem(3074);
-                            if (Items.CanUseItem(3748))
-                                Items.UseItem(3748);
+                            if (RootMenu.Item("t11").GetValue<bool>())
+                            {
+                                if (Items.CanUseItem(3077))
+                                    Items.UseItem(3077);
+                                if (Items.CanUseItem(3074))
+                                    Items.UseItem(3074);
+                                if (Items.CanUseItem(3748))
+                                    Items.UseItem(3748);
+                            }
                         }
                     }
 
@@ -407,7 +411,7 @@ namespace Camille
                                 #endregion
                             }
 
-                            if (Q.IsReady())
+                            if (Q.IsReady() && RootMenu.Item("useqclear").GetValue<bool>())
                             {
                                 UseQ(unit);
                             }
