@@ -338,14 +338,18 @@ namespace Camille
 
                         if (!Q.IsReady() || HasQ && !HasQ2)
                         {
-                            if (RootMenu.Item("t11").GetValue<bool>() && !aiMob.IsMinion)
+                            if (RootMenu.Item("t11").GetValue<bool>())
                             {
-                                if (Items.CanUseItem(3077))
-                                    Items.UseItem(3077);
-                                if (Items.CanUseItem(3074))
-                                    Items.UseItem(3074);
-                                if (Items.CanUseItem(3748))
-                                    Items.UseItem(3748);
+                                if (!aiMob.IsMinion || (Player.CountEnemiesInRange(900) < 1 
+                                    || !RootMenu.Item("clearnearenemy").GetValue<bool>() || Player.UnderAllyTurret()))
+                                {
+                                    if (Items.CanUseItem(3077))
+                                        Items.UseItem(3077);
+                                    if (Items.CanUseItem(3074))
+                                        Items.UseItem(3074);
+                                    if (Items.CanUseItem(3748))
+                                        Items.UseItem(3748);
+                                }
                             }
                         }
                     }
