@@ -574,6 +574,8 @@ namespace Camille
                 }
                 else
                 {
+                    var aiHero = t as Obj_AI_Hero;
+                    if (aiHero != null && Qdmg(aiHero, false) + Player.GetAutoAttackDamage(aiHero, true) * 2 >= aiHero.Health)
                     {
                         if (Q.Cast())
                         {
