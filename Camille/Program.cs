@@ -100,7 +100,7 @@ namespace Camille
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("blocke", "Dont E Leave Ultimatum")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
-                tcmenu.AddItem(new MenuItem("wdash", "Style Points +")).SetValue(true);
+                tcmenu.AddItem(new MenuItem("www", "Style Points Kappa +")).SetValue(false);
                 comenu.AddSubMenu(tcmenu);
                 comenu.AddSubMenu(abmenu);
 
@@ -657,7 +657,7 @@ namespace Camille
             {
                 if (W.IsReady() && RootMenu.Item("usewcombo").GetValue<bool>())
                 {
-                    if (combo && RootMenu.Item("wdash").GetValue<bool>())
+                    if (combo && RootMenu.Item("www").GetValue<bool>()) // dumb lol
                     {
                         var mouseDir = Player.ServerPosition + (Game.CursorPos - Player.ServerPosition).Normalized() * 265;
                         var wallPointReversed = bestWallPoint.Extend(mouseDir.To2D(), 1000);
