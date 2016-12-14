@@ -331,7 +331,6 @@ namespace Camille
                     var aiMob = args.Target as Obj_AI_Minion;
                     if (aiMob != null && aiMob.IsValidTarget())
                     {
-
                         if (Player.UnderTurret(true) && Player.CountEnemiesInRange(1000) > 0)
                         {
                             return;
@@ -339,7 +338,7 @@ namespace Camille
 
                         if (!Q.IsReady() || HasQ && !HasQ2)
                         {
-                            if (RootMenu.Item("t11").GetValue<bool>())
+                            if (RootMenu.Item("t11").GetValue<bool>() && !aiMob.IsMinion)
                             {
                                 if (Items.CanUseItem(3077))
                                     Items.UseItem(3077);
@@ -356,7 +355,8 @@ namespace Camille
                     {
                         #region LaneClear Q
 
-                        if (Player.CountEnemiesInRange(1000) < 1 || Player.UnderAllyTurret() || !RootMenu.Item("clearnearenemy").GetValue<bool>())
+                        if (Player.CountEnemiesInRange(1000) < 1 || Player.UnderAllyTurret() 
+                            || !RootMenu.Item("clearnearenemy").GetValue<bool>())
                         {
                             if (aiBase.UnderTurret(true) && Player.CountEnemiesInRange(1000) > 0 && !Player.UnderAllyTurret())
                             {
@@ -391,7 +391,7 @@ namespace Camille
                     var unit = args.Target as AttackableUnit;
                     if (unit != null)
                     {
-                        if (Player.CountEnemiesInRange(1000) < 1 
+                        if (Player.CountEnemiesInRange(1000) < 1 || Player.UnderAllyTurret()
                             || !RootMenu.Item("clearnearenemy").GetValue<bool>())
                         {
                             // if jungle minion
@@ -640,9 +640,21 @@ namespace Camille
 
                     if (RootMenu.Item("blocke").GetValue<bool>())
                     {
-                        if (rPoint.Any(entry => p.Distance(entry.Value.Position) > 450))
+                        if (rPoint.Any(entry => desiredPos.Distance(entry.Value.Position) > 450))
                         {
                             continue;
+                        }
+                    }
+
+                    if (ChargingW)
+                    {
+                        var wtarget = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
+                        if (wtarget != null)
+                        {
+                            if (desiredPos.Distance(wtarget.ServerPosition) > W.Range)
+                            {
+                                return;
+                            }
                         }
                     }
 
