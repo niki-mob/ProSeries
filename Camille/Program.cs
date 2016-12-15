@@ -130,8 +130,7 @@ namespace Camille
                 RootMenu.AddSubMenu(fmenu);
 
                 var exmenu = new Menu("-] Events", "exmenu");
-                exmenu.AddItem(new MenuItem("interruptx", "Interrupt")).SetValue(false).ValueChanged +=
-                    (sender, eventArgs) => eventArgs.Process = false;
+                exmenu.AddItem(new MenuItem("interrupt", "Interrupt")).SetValue(true);
                 exmenu.AddItem(new MenuItem("antigapcloserx", "Anti-Gapcloser")).SetValue(false).ValueChanged +=
                     (sender, eventArgs) => eventArgs.Process = false;
                 RootMenu.AddSubMenu(exmenu);
@@ -166,6 +165,7 @@ namespace Camille
                 Obj_AI_Base.OnDoCast += Obj_AI_Base_OnDoCast;
                 Obj_AI_Base.OnIssueOrder += CamilleOnIssueOrder;
                 GameObject.OnCreate += Obj_GeneralParticleEmitter_OnCreate;
+                Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
 
                 // test
                 var color = System.Drawing.Color.FromArgb(200, 0, 220, 144);
@@ -176,6 +176,17 @@ namespace Camille
             catch (Exception e)
             {
                 Console.WriteLine(e);
+            }
+        }
+
+        private static void Interrupter2_OnInterruptableTarget(Obj_AI_Hero sender, Interrupter2.InterruptableTargetEventArgs args)
+        {
+            if (RootMenu.Item("interrupt").GetValue<bool>())
+            {
+                if (sender.IsValidTarget(E.Range) && E.IsReady())
+                {
+                    UseE(sender.ServerPosition);
+                }
             }
         }
 
@@ -254,7 +265,6 @@ namespace Camille
                         {
                             args.Process = false;
                             Player.IssueOrder(GameObjectOrder.MoveTo, aiHero.ServerPosition, false);
-                            //Console.WriteLine("Redirected @ Hero");
                         }
                     }
                 }
@@ -277,7 +287,6 @@ namespace Camille
                         {
                             args.Process = false;
                             Player.IssueOrder(GameObjectOrder.MoveTo, aiMob.ServerPosition, false);
-                            //Console.WriteLine("Redirected @ Mob");
                         }
                     }
                 }
@@ -613,11 +622,6 @@ namespace Camille
 
             if (combo)
             {
-                if (!RootMenu.Item("useecombo").GetValue<bool>()) 
-                {
-                    return;
-                }
-
                 if (Player.Distance(p) < RootMenu.Item("minerange").GetValue<Slider>().Value)
                 {
                     return;
