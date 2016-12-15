@@ -588,7 +588,12 @@ namespace Camille
 
         static void UseW(Obj_AI_Base target)
         {
-            if (OnWall || CanW(target) == false || ChargingW)
+            if (OnWall || !CanW(target) || ChargingW)
+            {
+                return;
+            }
+
+            if (Orbwalking.InAutoAttackRange(target))
             {
                 return;
             }
@@ -627,6 +632,11 @@ namespace Camille
                 }
 
                 if (p.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
+                {
+                    return;
+                }
+
+                if (p.InFountain(Utility.FountainType.EnemyFountain))
                 {
                     return;
                 }
@@ -678,7 +688,10 @@ namespace Camille
 
                     if (desiredPos.IsWall())
                     {
-                        candidatePos.Add(desiredPos);
+                        if (!desiredPos.InFountain(Utility.FountainType.EnemyFountain))
+                        {
+                            candidatePos.Add(desiredPos);
+                        }
                     }
                 }
             }
