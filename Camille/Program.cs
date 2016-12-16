@@ -113,7 +113,7 @@ namespace Camille
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("blocke", "Dont E Leave Ultimatum")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
-                tcmenu.AddItem(new MenuItem("www", "Style Points Kappa +")).SetValue(false);
+                tcmenu.AddItem(new MenuItem("www", "Expirimental Combo")).SetValue(false).SetTooltip("W -> E");
                 comenu.AddSubMenu(tcmenu);
 
                 comenu.AddSubMenu(revade);
@@ -183,7 +183,6 @@ namespace Camille
                 GameObject.OnCreate += Obj_GeneralParticleEmitter_OnCreate;
                 Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
 
-                // test
                 var color = System.Drawing.Color.FromArgb(200, 0, 220, 144);
                 var hexargb = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
 
@@ -641,15 +640,15 @@ namespace Camille
             {
                 if (!unit.Name.Contains("Mini"))
                 {
+                    if (RootMenu.Item("usewclear").GetValue<bool>())
+                    {
+                        UseW(unit);
+                    }
+
                     if (!W.IsReady() || !RootMenu.Item("usewclear").GetValue<bool>())
                     {
                         if (!ChargingW && RootMenu.Item("useeclear").GetValue<bool>())
                             UseE(unit.ServerPosition, false);
-                    }
-
-                    if (RootMenu.Item("usewclear").GetValue<bool>())
-                    {
-                        UseW(unit);
                     }
                 }
                 else
@@ -687,7 +686,7 @@ namespace Camille
                 else
                 {
                     var aiHero = t as Obj_AI_Hero;
-                    if (aiHero != null && Qdmg(aiHero, false) + Player.GetAutoAttackDamage(aiHero, true) * 2 >= aiHero.Health)
+                    if (aiHero != null && Qdmg(aiHero, false) + Player.GetAutoAttackDamage(aiHero, true) * 1 >= aiHero.Health)
                     {
                         if (Q.Cast())
                         {
@@ -710,7 +709,7 @@ namespace Camille
                 return;
             }
 
-            if (Orbwalking.InAutoAttackRange(target) || KnockedBack(target))
+            if (KnockedBack(target))
             {
                 return;
             }
@@ -822,7 +821,27 @@ namespace Camille
                         var mouseDir = Player.ServerPosition + (Game.CursorPos - Player.ServerPosition).Normalized() * 265;
                         var wallPointReversed = bestWallPoint.Extend(mouseDir.To2D(), 1000);
 
-                        W.Cast(wallPointReversed);
+                        // expiremental
+                        // xd
+
+                        int dashSpeedEst = 1450;
+                        int hookSpeedEst = 1250;
+
+                        float e1Time = 1000 * (Player.Distance(bestWallPoint) / hookSpeedEst);
+                        float meToWall = e1Time + (1000 * (Player.Distance(bestWallPoint) / dashSpeedEst));
+                        float wallToHero = (1000 * (bestWallPoint.Distance(p) / dashSpeedEst));
+
+                        var travelTime = 250 + meToWall + wallToHero;
+                        if (travelTime >= 1250 && travelTime <= 1750)
+                        {
+                            W.Cast(wallPointReversed);
+                        }
+
+                        if (travelTime > 1750)
+                        {
+                            var delay = 100 + (travelTime - 1750);
+                            Utility.DelayAction.Add((int) delay, () => W.Cast(wallPointReversed));
+                        }
                     }
                 }
 
@@ -870,7 +889,7 @@ namespace Camille
         {
             const float wCastTime = 2000f;
 
-            if (OnWall || HasQ2)
+            if (OnWall || HasQ2 || IsDashing)
             {
                 return false;
             }
@@ -921,12 +940,11 @@ namespace Camille
 
             if (Q.IsReady() && target != null)
             {
-
                 dmg += Player.CalcDamage(target, Damage.DamageType.Physical, Player.GetAutoAttackDamage(target, true) +
                     (new[]  { 0.2, 0.25, 0.30, 0.35, 0.40 } [Q.Level - 1] * (Player.BaseAttackDamage + Player.FlatPhysicalDamageMod)));
 
                 var dmgreg = Player.CalcDamage(target, Damage.DamageType.Physical, Player.GetAutoAttackDamage(target, true) +
-                    (new[] { 0.4, 0.5, 0.6, 0.7, 0.8 }[Q.Level - 1] * (Player.BaseAttackDamage + Player.FlatPhysicalDamageMod)));
+                    (new[] { 0.4, 0.5, 0.6, 0.7, 0.8 } [Q.Level - 1] * (Player.BaseAttackDamage + Player.FlatPhysicalDamageMod)));
 
                 var pct = 52 + (3 * Math.Min(16, Player.Level));
 
@@ -970,7 +988,7 @@ namespace Camille
             if (E.IsReady() && target != null)
             {
                 dmg += Player.CalcDamage(target, Damage.DamageType.Physical,
-                    (new[] { 70, 115, 160, 205, 250  }[E.Level - 1] + (0.75 * Player.FlatPhysicalDamageMod)));
+                    (new[] { 70, 115, 160, 205, 250 } [E.Level - 1] + (0.75 * Player.FlatPhysicalDamageMod)));
             }
 
             return dmg;
