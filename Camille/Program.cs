@@ -23,6 +23,8 @@ namespace Camille
         internal static bool OnWall => Player.HasBuff(WallBuffName) || E.Instance.Name != "CamilleE";
         internal static bool IsDashing => Player.HasBuff(EDashBuffName + "1") || Player.HasBuff(EDashBuffName + "2");
         internal static bool ChargingW => Player.HasBuff(WBuffName);
+        internal static bool KnockedBack(Obj_AI_Base target) => target != null && target.HasBuff(KnockBackBuffName);
+
         internal static string WBuffName => "camillewconeslashcharge";
         internal static string EDashBuffName => "camilleedash";
         internal static string WallBuffName => "camilleedashtoggle"; 
@@ -30,6 +32,7 @@ namespace Camille
         internal static string Q2BuffName => "camilleqprimingcomplete";
         internal static string RBuffName => "camillertether";
         internal static string REmitterName => "Camille_Base_R_Indicator_Edge.troy";
+        internal static string KnockBackBuffName => "camilleeknockback2";
 
         internal static int TickLimiter;
         internal static Dictionary<float, Obj_GeneralParticleEmitter> rPoint =
@@ -51,16 +54,12 @@ namespace Camille
             try
             {
                 if (ObjectManager.Player.ChampionName != "Camille")
-                {
                     return;
-                }
 
                 Q = new Spell(SpellSlot.Q, 135f);
                 W = new Spell(SpellSlot.W, 625f);
                 E = new Spell(SpellSlot.E, 975f);
                 R = new Spell(SpellSlot.R, 375f);
-
-                W.SetSkillshot(1.5f, (float) (45 * Math.PI/180), float.MaxValue, false, SkillshotType.SkillshotCone);
 
                 RootMenu = new Menu("Camille#", "camille", true);
 
@@ -96,6 +95,19 @@ namespace Camille
                 abmenu.AddItem(new MenuItem("useecombo", "Use E")).SetValue(true);
                 abmenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
 
+                var revade = new Menu("-] Evade", "revade");
+                revade.AddItem(new MenuItem("revade", "Use R to Evade")).SetValue(true);
+
+                foreach (var spell in from entry in Evadeable.DangerList
+                    select entry.Value into spell from hero in
+                        HeroManager.Enemies
+                            .Where(x => x.ChampionName.ToLower() == spell.ChampionName.ToLower())
+                    select spell)
+                {
+                    revade.AddItem(new MenuItem("revade" + spell.SDataName.ToLower(), "-> " + spell.ChampionName + " R"))
+                        .SetValue(true);
+                }
+                
                 tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("r55", "Only R Selected Target")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
@@ -103,7 +115,10 @@ namespace Camille
                 tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
                 tcmenu.AddItem(new MenuItem("www", "Style Points Kappa +")).SetValue(false);
                 comenu.AddSubMenu(tcmenu);
+
+                comenu.AddSubMenu(revade);
                 comenu.AddSubMenu(abmenu);
+
 
                 RootMenu.AddSubMenu(comenu);
 
@@ -164,6 +179,7 @@ namespace Camille
                 Drawing.OnEndScene += Drawing_OnEndScene;
                 Obj_AI_Base.OnDoCast += Obj_AI_Base_OnDoCast;
                 Obj_AI_Base.OnIssueOrder += CamilleOnIssueOrder;
+                Obj_AI_Base.OnProcessSpellCast += Obj_AI_Base_OnProcessSpellCast;
                 GameObject.OnCreate += Obj_GeneralParticleEmitter_OnCreate;
                 Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
 
@@ -176,6 +192,78 @@ namespace Camille
             catch (Exception e)
             {
                 Console.WriteLine(e);
+            }
+        }
+
+        private static void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            var attacker = sender as Obj_AI_Hero;
+            if (attacker != null && attacker.IsEnemy)
+            {
+                var aiTarget = args.Target as Obj_AI_Hero;
+
+                var bestTarget = TargetSelector.GetTarget(R.Range + 100, TargetSelector.DamageType.Physical);
+                if (bestTarget == null)
+                {
+                    return;
+                }
+
+                if (R.IsReady() && RootMenu.Item("revade").GetValue<bool>())
+                {
+                    if (attacker.Distance(Player) <= R.Range + 35)
+                    {
+                        foreach (var spell in Evadeable.DangerList.Select(entry => entry.Value)
+                            .Where(spell => spell.SDataName.ToLower() == args.SData.Name.ToLower())
+                            .Where(spell => RootMenu.Item("revade" + spell.SDataName.ToLower()).GetValue<bool>()))
+                        {
+                            switch (spell.EvadeType)
+                            {
+                                case EvadeType.Target:
+                                    if (aiTarget != null && aiTarget.IsMe)
+                                    {
+                                        UseR(bestTarget, true);
+                                    }
+                                    break;
+
+                                case EvadeType.SelfCast:
+                                    if (attacker.Distance(Player) <= R.Range)
+                                    {
+                                        UseR(bestTarget, true);
+                                    }
+                                    break;
+                                case EvadeType.SkillshotLine:
+                                    var lineStart = args.Start.To2D();
+                                    var lineEnd = args.End.To2D();
+
+                                    if (lineStart.Distance(lineEnd) < R.Range)
+                                        lineEnd = lineStart + (lineEnd - lineStart).Normalized() * R.Range + 25;
+
+                                    if (lineStart.Distance(lineEnd) > R.Range)
+                                        lineEnd = lineStart + (lineEnd - lineStart).Normalized() * R.Range * 2;
+
+                                    var spellProj = Player.ServerPosition.To2D().ProjectOn(lineStart, lineEnd);
+                                    if (spellProj.IsOnSegment)
+                                    {
+                                        UseR(bestTarget, true);
+                                    }
+                                    break;
+
+                                case EvadeType.SkillshotCirce:
+                                    var curStart = args.Start.To2D();
+                                    var curEnd = args.End.To2D();
+
+                                    if (curStart.Distance(curEnd) > R.Range)
+                                        curEnd = curStart + (curEnd - curStart).Normalized() * R.Range;
+
+                                    if (curEnd.Distance(Player) <= R.Range)
+                                    {
+                                        UseR(bestTarget, true);
+                                    }
+                                    break;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -263,8 +351,12 @@ namespace Camille
                         var heroDirection = (aiHero.Position - Player.Position).To2D().Normalized();
                         if (heroDirection.AngleBetween(issueOrderDirection) > 10)
                         {
-                            args.Process = false;
-                            Player.IssueOrder(GameObjectOrder.MoveTo, aiHero.ServerPosition, false);
+                            var isDangerPos = aiHero.ServerPosition.InFountain(Utility.FountainType.EnemyFountain);
+                            if (isDangerPos == false)
+                            {
+                                args.Process = false;
+                                Player.IssueOrder(GameObjectOrder.MoveTo, aiHero.ServerPosition, false);
+                            }
                         }
                     }
                 }
@@ -443,10 +535,21 @@ namespace Camille
         {
             Orbwalker.SetAttack(!ChargingW);
 
-            foreach (var timestamp in rPoint.Select(entry => entry.Key).Where(timestamp => Game.Time - timestamp > 4f))
+            foreach (var entry in rPoint)
             {
-                rPoint.Remove(timestamp);
-                break;
+                var timestamp = entry.Key;
+                if (Game.Time - timestamp > 4f)
+                {
+                    rPoint.Remove(timestamp);
+                    break;
+                }
+
+                var ultimatum = entry.Value;
+                if (!ultimatum.IsValid || !ultimatum.IsVisible)
+                {
+                    rPoint.Remove(timestamp);
+                    break;
+                }
             }
 
             if (RootMenu.Item("useflee").GetValue<KeyBind>().Active)
@@ -597,19 +700,24 @@ namespace Camille
 
         static void UseW(Obj_AI_Base target)
         {
-            if (OnWall || !CanW(target) || ChargingW)
+            if (OnWall || !CanW(target))
             {
                 return;
             }
 
-            if (Orbwalking.InAutoAttackRange(target))
+            if (ChargingW || IsDashing)
+            {
+                return;
+            }
+
+            if (Orbwalking.InAutoAttackRange(target) || KnockedBack(target))
             {
                 return;
             }
 
             if (W.IsReady() && target.Distance(Player.ServerPosition) <= W.Range)
             {
-                W.CastIfHitchanceEquals(target, HitChance.High);
+                W.Cast(target.ServerPosition);
             }
         }
 
@@ -722,9 +830,14 @@ namespace Camille
             }
         }
 
-        static void UseR(Obj_AI_Hero target)
+        static void UseR(Obj_AI_Hero target, bool force = false)
         {
-            if (target.Distance(Player.ServerPosition) <= R.Range)
+            if (R.IsReady() && force)
+            {
+                R.CastOnUnit(target);
+            }
+
+            if (target.Distance(Player) <= R.Range)
             {
                 if (RootMenu.Item("r55").GetValue<bool>())
                 {
