@@ -13,7 +13,7 @@ namespace Jinx
         internal static Spell Q, W, E, R;
         internal static Orbwalking.Orbwalker Orbwalker;
         internal static float RocketRange;
-        internal static float FarmRadius => Items.HasItem(3085) ? 300f: 150f;
+        internal static float FarmRadius => Items.HasItem(3085) ? 250f: 100f;
         internal static Obj_AI_Hero Player => ObjectManager.Player;
 
         static void Main(string[] args)
@@ -159,7 +159,7 @@ namespace Jinx
                 return;
             }
 
-            if (gapcloser.Sender.IsValidTarget(250) && Root.Item("autogap").GetValue<bool>())
+            if (gapcloser.Sender.IsValidTarget(300) && Root.Item("autogap").GetValue<bool>())
             {
                 var castPos = gapcloser.End;
                 E.Cast(castPos);
@@ -628,7 +628,7 @@ namespace Jinx
                 return null;
             }
 
-            var objs = ObjectManager.Get<Obj_AI_Base>().Where(x => x.Distance(Player.ServerPosition) <= RocketRange + 525);
+            var objs = MinionManager.GetMinions(525 + RocketRange);
             foreach (var minion in objs.OrderBy(m => m.Distance(target.Position)))
             {
                 var mPos = Prediction.GetPrediction(target, 100 + Game.Ping / 2f).UnitPosition;
