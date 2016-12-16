@@ -680,7 +680,7 @@ namespace Camille
                 {
                     if (Q.Cast())
                     {
-                        Orbwalking.ResetAutoAttackTimer(); // TEMP
+                        //Orbwalking.ResetAutoAttackTimer(); // TEMP
                     }
                 }
                 else
@@ -690,7 +690,7 @@ namespace Camille
                     {
                         if (Q.Cast())
                         {
-                            Orbwalking.ResetAutoAttackTimer(); // TEMP
+                            //Orbwalking.ResetAutoAttackTimer(); // TEMP
                         }
                     }
                 }
