@@ -350,7 +350,7 @@ namespace Camille
                         var heroDirection = (aiHero.Position - Player.Position).To2D().Normalized();
                         if (heroDirection.AngleBetween(issueOrderDirection) > 10)
                         {
-                            var isDangerPos = aiHero.ServerPosition.InFountain(Utility.FountainType.EnemyFountain);
+                            var isDangerPos = aiHero.ServerPosition.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active;
                             if (isDangerPos == false)
                             {
                                 args.Process = false;
@@ -746,11 +746,6 @@ namespace Camille
                 {
                     return;
                 }
-
-                if (p.InFountain(Utility.FountainType.EnemyFountain))
-                {
-                    return;
-                }
             }
 
             var posChecked = 0;
@@ -799,10 +794,7 @@ namespace Camille
 
                     if (desiredPos.IsWall())
                     {
-                        if (!desiredPos.InFountain(Utility.FountainType.EnemyFountain))
-                        {
-                            candidatePos.Add(desiredPos);
-                        }
+                        candidatePos.Add(desiredPos);
                     }
                 }
             }
