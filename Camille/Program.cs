@@ -113,6 +113,7 @@ namespace Camille
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("blocke", "Dont E Leave Ultimatum")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
+                tcmenu.AddItem(new MenuItem("enhancede", "Enhanced E Precision")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("www", "Expirimental Combo")).SetValue(false).SetTooltip("W -> E");
                 comenu.AddSubMenu(tcmenu);
 
@@ -749,9 +750,15 @@ namespace Camille
             }
 
             var posChecked = 0;
-            var maxPosChecked = 80;
+            var maxPosChecked = 40;
             var posRadius = 145;
             var radiusIndex = 0;
+
+            if (RootMenu.Item("enhancede").GetValue<bool>())
+            {
+                maxPosChecked = 80;
+                posRadius = 65;
+            }
 
             var candidatePos = new List<Vector2>();
 
