@@ -16,6 +16,7 @@ namespace Jinx
         internal static float FarmRadius => Items.HasItem(3085) ? 250f: 100f;
         internal static Obj_AI_Hero Player => ObjectManager.Player;
         internal static HpBarIndicator BarIndicator = new HpBarIndicator();
+        private static float windUpDist;
 
         static void Main(string[] args)
         {
@@ -197,7 +198,7 @@ namespace Jinx
             var qCircle = Root.Item("drawmyq").GetValue<Circle>();
             if (qCircle.Active)
             {
-                Render.Circle.DrawCircle(Player.Position, Q.Range + 40, qCircle.Color);
+                Render.Circle.DrawCircle(Player.Position, Q.Range + windUpDist, qCircle.Color);
             }
         }
 
@@ -235,6 +236,28 @@ namespace Jinx
 
             var minigunDmg = sender.GetAutoAttackDamage(target, true) * aaacountinsettime;
             return (float) minigunDmg;
+        }
+
+        private static float WalkDistTime(Obj_AI_Base unit)
+        {
+            return (1000 * (Player.Distance(unit) / Player.MoveSpeed)) + Game.Ping;
+        }
+
+        private static float WalkDistTime(Vector2 pos, float movespeed)
+        {
+            return (1000 * (Player.Distance(pos) / movespeed)) + Game.Ping;
+        }
+
+        private static float QSwapTime(float extraWindUp, bool toRockets = false)
+        {
+            var realWindUp = (1 / Player.AttackDelay) * 1000;
+
+            if (toRockets)
+            {
+                realWindUp += (float) (realWindUp * 0.25);
+            }
+
+            return realWindUp + extraWindUp;
         }
 
         private static void Orbwalking_BeforeAttack(Orbwalking.BeforeAttackEventArgs args)
@@ -337,6 +360,8 @@ namespace Jinx
             }
 
             var hasRockets = Player.GetSpell(SpellSlot.Q).ToggleState == 2;
+            windUpDist = Math.Max(0, QSwapTime(Game.Ping, !hasRockets) / 10);
+
             if (hasRockets && CanClear)
             {
                 if (Root.Item("useqclear").GetValue<bool>() && Root.Item("swapbackfarm").GetValue<bool>())
@@ -361,26 +386,29 @@ namespace Jinx
                     }
                 }
 
-                var qtarget = TargetSelector.GetTarget(525 + RocketRange + 250, TargetSelector.DamageType.Physical);
+                var qtarget = TargetSelector.GetTarget(525 + RocketRange + windUpDist, TargetSelector.DamageType.Physical);
                 if (qtarget.IsValidTarget() && Q.IsReady())
                 {
                     if (Root.Item("useqcombo").GetValue<bool>())
                     {
                         if (!hasRockets && (Player.ManaPercent > 35 || Player.GetAutoAttackDamage(qtarget, true) * 3 > qtarget.Health))
                         {
-                            if (qtarget.Distance(Player.ServerPosition) > 535)
+                            if (qtarget.Distance(Player.ServerPosition) > 525 + windUpDist)
                             {
-                                if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
+                                if (WalkDistTime(qtarget) > QSwapTime(Game.Ping, true))
                                 {
-                                    Orbwalker.ForceTarget(GetHarassObj(qtarget));
-                                    Orbwalking.Orbwalk(GetHarassObj(qtarget), Game.CursorPos);
-                                }
+                                    if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
+                                    {
+                                        Orbwalker.ForceTarget(GetHarassObj(qtarget));
+                                        Orbwalking.Orbwalk(GetHarassObj(qtarget), Game.CursorPos);
+                                    }
 
-                                Q.Cast();
+                                    Q.Cast();
+                                }
                             }
                         }
 
-                        if (hasRockets && qtarget.Distance(Player) <= 535)
+                        if (hasRockets && qtarget.Distance(Player) <= 525 + windUpDist)
                         {
                             Q.Cast();
                         }
@@ -539,7 +567,7 @@ namespace Jinx
                 }            
             }
 
-            if (Root.Item("autor").GetValue<bool>() || CanCombo)
+            if (Root.Item("autor").GetValue<bool>() || CanCombo && Root.Item("usercombo").GetValue<bool>())
             {
                 var maxDistance = Root.Item("maxrdist").GetValue<Slider>().Value;
 
@@ -560,7 +588,8 @@ namespace Jinx
             {
                 // summoners rift
                 "SRU_Razorbeak", "SRU_Krug", "Sru_Crab",
-                "SRU_Baron", "SRU_Dragon", "SRU_Blue", "SRU_Red", "SRU_Murkwolf", "SRU_Gromp",
+                // "SRU_Baron", "SRU_Dragon",
+                "SRU_Blue", "SRU_Red", "SRU_Murkwolf", "SRU_Gromp",
 
                 // twisted treeline
                 "TT_NGolem5", "TT_NGolem2", "TT_NWolf6", "TT_NWolf3",
