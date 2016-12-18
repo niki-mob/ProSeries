@@ -15,6 +15,7 @@ namespace Jinx
         internal static float RocketRange;
         internal static float FarmRadius => Items.HasItem(3085) ? 250f: 100f;
         internal static Obj_AI_Hero Player => ObjectManager.Player;
+        internal static HpBarIndicator BarIndicator = new HpBarIndicator();
 
         static void Main(string[] args)
         {
@@ -133,6 +134,7 @@ namespace Jinx
             Root.AddSubMenu(skmenu);
 
             var drmenu = new Menu("-] Draw", "drmenu");
+            drmenu.AddItem(new MenuItem("drawhpbarfill", "Draw R HPBarFill")).SetValue(true);
             drmenu.AddItem(new MenuItem("drawmyw", "Draw W")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 37, 230, 255)));
             drmenu.AddItem(new MenuItem("drawmyq", "Draw Q")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 0, 220, 144)));
             Root.AddSubMenu(drmenu);
@@ -140,6 +142,7 @@ namespace Jinx
             Root.AddToMainMenu();
 
             Drawing.OnDraw += Drawing_OnDraw;
+            Drawing.OnEndScene += Drawing_OnEndScene;
             Orbwalking.BeforeAttack += Orbwalking_BeforeAttack;
             Orbwalking.AfterAttack += Orbwalking_AfterAttack;
             //Obj_AI_Base.OnProcessSpellCast += Obj_AI_Hero_OnProcessSpellCast;
@@ -150,6 +153,23 @@ namespace Jinx
             var hexargb = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
 
             Game.PrintChat("<b><font color=\"" + hexargb + "\">Jinx#</font></b> - Loaded!");
+        }
+
+        private static void Drawing_OnEndScene(EventArgs args)
+        {
+            if (Root.Item("drawhpbarfill").GetValue<bool>())
+            {
+                foreach (
+                    var enemy in
+                        ObjectManager.Get<Obj_AI_Hero>()
+                            .Where(ene => ene.IsValidTarget() && !ene.IsZombie))
+                {
+                    var color = new ColorBGRA(255, 255, 0, 90);
+
+                    BarIndicator.unit = enemy;
+                    BarIndicator.drawDmg(GetRDamage(enemy), color);
+                }
+            }
         }
 
         private static void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
@@ -180,7 +200,6 @@ namespace Jinx
                 Render.Circle.DrawCircle(Player.Position, Q.Range + 40, qCircle.Color);
             }
         }
-
 
         private static void Obj_AI_Hero_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
@@ -339,8 +358,6 @@ namespace Jinx
                                     Player.GetAutoAttackDamage(i, true) * 3 < i.Health))
                     {
                         Q.Cast();
-                        //Print.PrintMsg("Mana Percent < 35 & Enemies not Killable in 3 AA");
-                        //Print.PrintMsg("Swap to minigun mana low");
                     }
                 }
 
@@ -360,23 +377,18 @@ namespace Jinx
                                 }
 
                                 Q.Cast();
-                                //Print.PrintMsg("Minigun Out - Someone killable in 3AA or Mana% > 35");
-                                //Print.PrintMsg("Swap to rockets target is greater than 525 range");
                             }
                         }
 
                         if (hasRockets && qtarget.Distance(Player) <= 535)
                         {
                             Q.Cast();
-                            //Print.PrintMsg("Swap to minigun target is in basic attack range");
                         }
 
                         if (hasRockets && Player.ManaPercent < 35 && Player.GetAutoAttackDamage(qtarget, true) * 3 < qtarget.Health)
                         {
                             Q.Cast();
-                            //Print.PrintMsg("Swap to minigun mana low");
                         }
-
                     }
                 }
 
@@ -421,7 +433,6 @@ namespace Jinx
                             if (hasRockets && Player.ManaPercent < Root.Item("qharassmana").GetValue<Slider>().Value)
                             {
                                 Q.Cast();
-                                //Print.PrintMsg("Swap to minigun mana low");
                             }
 
                             if (hasRockets && Player.ManaPercent > Root.Item("qharassmana").GetValue<Slider>().Value)
@@ -432,7 +443,6 @@ namespace Jinx
                                     {
                                         Orbwalker.ForceTarget(minion);
                                         Orbwalking.Orbwalk(minion, Game.CursorPos);
-                                        //Player.IssueOrder(GameObjectOrder.AttackUnit, minion);
                                     }
                                 }
                             }
@@ -491,7 +501,7 @@ namespace Jinx
                             Q.Cast();
                         }
 
-                        if (hasRockets/* && Player.Level >= 11*/) // not sure when should force target
+                        if (hasRockets)
                         {
                             Orbwalker.ForceTarget(GetCenterMinion(Root.Item("useqclearkill").GetValue<bool>()));
                         }

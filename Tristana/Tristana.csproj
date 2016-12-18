@@ -33,20 +33,17 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Ensage">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Azkmg0g9G\References\Ensage.dll</HintPath>
-    </Reference>
     <Reference Include="LeagueSharp">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Azkmg0g9G\References\LeagueSharp.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\L33T\References\LeagueSharp.dll</HintPath>
     </Reference>
     <Reference Include="LeagueSharp.Common">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Azkmg0g9G\References\LeagueSharp.Common.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\L33T\References\LeagueSharp.Common.dll</HintPath>
     </Reference>
     <Reference Include="SharpDX">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Azkmg0g9G\References\SharpDX.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\L33T\References\SharpDX.dll</HintPath>
     </Reference>
     <Reference Include="SharpDX.Direct3D9">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Azkmg0g9G\References\SharpDX.Direct3D9.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\L33T\References\SharpDX.Direct3D9.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -59,6 +56,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HpBarIndicator.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -2,6 +2,7 @@
 using System.Linq;
 using LeagueSharp.Common;
 using LeagueSharp;
+using SharpDX;
 
 namespace Tristana
 {
@@ -15,6 +16,7 @@ namespace Tristana
         internal static float TargetRange;
         internal static float PlayerRange;
         internal static Obj_AI_Hero Player => ObjectManager.Player;
+        internal static HpBarIndicator BarIndicator = new HpBarIndicator();
 
         static void Main(string[] args)
         {
@@ -91,6 +93,7 @@ namespace Tristana
             Root.AddSubMenu(skmenu);
 
             var drmenu = new Menu("Drawings", "drmenu");
+            drmenu.AddItem(new MenuItem("drawhpbarfill", "Draw HPBarFill")).SetValue(true);
             drmenu.AddItem(new MenuItem("drawe", "Draw E")).SetValue(false);
             drmenu.AddItem(new MenuItem("draww", "Draw W")).SetValue(false);
             Root.AddSubMenu(drmenu);
@@ -98,12 +101,30 @@ namespace Tristana
             Root.AddToMainMenu();
 
             Drawing.OnDraw += Drawing_OnDraw;
+            Drawing.OnEndScene += Drawing_OnEndScene;
             Game.OnUpdate += Game_OnUpdate;
             // GameObject.OnCreate += GameObject_OnCreate;
             Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
             AntiGapcloser.OnEnemyGapcloser += AntiGapcloser_OnEnemyGapcloser;
 
             Game.PrintChat("<b><font color=\"#FF3366\">ProSeries: Tristana</font></b> - Loaded!");
+        }
+
+        private static void Drawing_OnEndScene(EventArgs args)
+        {
+            if (Root.Item("drawhpbarfill").GetValue<bool>())
+            {
+                foreach (
+                    var enemy in
+                        ObjectManager.Get<Obj_AI_Hero>()
+                            .Where(ene => ene.IsValidTarget() && !ene.IsZombie))
+                {
+                    var color = new ColorBGRA(255, 255, 0, 90);
+
+                    BarIndicator.unit = enemy;
+                    BarIndicator.drawDmg((float) R.GetDamage(enemy) + EDmg(enemy), color);
+                }
+            }
         }
 
         private static void GameObject_OnCreate(GameObject sender, EventArgs args)
