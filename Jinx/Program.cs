@@ -609,6 +609,20 @@ namespace Jinx
                 return false;
             }
 
+            if (unit.Distance(Player) <= W.Range && W.IsReady() && W.GetDamage(unit) >= unit.Health)
+            {
+                if (Root.Item("usewcombo").GetValue<bool>())
+                    return false;
+            }
+
+            if (Orbwalking.InAutoAttackRange(unit))
+            {
+                if (Player.GetAutoAttackDamage(unit, true) >= unit.Health)
+                {
+                    return false;
+                }
+            }
+
             foreach (var ally in HeroManager.Allies.Where(x => !x.IsMe))
             {
                 if (ally.Distance(unit.ServerPosition) <= 500 && ally.HealthPercent > unit.HealthPercent &&
