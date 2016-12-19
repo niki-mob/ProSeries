@@ -251,13 +251,15 @@ namespace Jinx
         private static float QSwapTime(float extraWindUp, bool toRockets = false)
         {
             var realWindUp = (1 / Player.AttackDelay) * 1000;
+            float delay = 0f;
 
             if (toRockets)
             {
+                delay += 250f;
                 realWindUp += (float) (realWindUp * 0.25);
             }
 
-            return realWindUp + extraWindUp;
+            return delay + realWindUp + extraWindUp;
         }
 
         private static void Orbwalking_BeforeAttack(Orbwalking.BeforeAttackEventArgs args)
