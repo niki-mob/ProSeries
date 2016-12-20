@@ -779,13 +779,6 @@ namespace Camille
                 {
                     return;
                 }
-
-                if (DangerPoints.Any(i => 
-                    p.Distance(i.Value.Emitter.Position) > 450 && i.Value.Type == AvoidType.Outside ||
-                        p.Distance(i.Value.Emitter.Position) < 450 && i.Value.Type == AvoidType.Inside))
-                {
-                    return;
-                }
             }
 
             var posChecked = 0;
@@ -815,12 +808,30 @@ namespace Camille
                     var cRadians = (0x2 * Math.PI / (curCurcleChecks - 1)) * i;
                     var xPos = (float) Math.Floor(p.X + curRadius * Math.Cos(cRadians));
                     var yPos = (float) Math.Floor(p.Y + curRadius * Math.Sin(cRadians));
-
                     var desiredPos = new Vector2(xPos, yPos);
+                    var anyDangerousPos = false;
 
-                    if (DangerPoints.Any(x => 
-                            desiredPos.Distance(x.Value.Emitter.Position) > 450 &&  x.Value.Type == AvoidType.Outside ||
-                                desiredPos.Distance(x.Value.Emitter.Position) < 450 && x.Value.Type == AvoidType.Inside))
+                    foreach (var x in DangerPoints)
+                    {
+                        var obj = x.Value;
+                        if (obj.Type == AvoidType.Outside && desiredPos.Distance(obj.Emitter.Position) > 450)
+                        {
+                            anyDangerousPos = true;
+                            break;
+                        }
+
+                        if (obj.Type == AvoidType.Inside)
+                        {
+                            var proj = obj.Emitter.Position.To2D().ProjectOn(desiredPos, p.To2D());
+                            if (proj.IsOnSegment && proj.SegmentPoint.Distance(obj.Emitter.Position) <= 150)
+                            {
+                                anyDangerousPos = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (anyDangerousPos)
                     {
                         continue;
                     }
@@ -832,7 +843,7 @@ namespace Camille
                         {
                             if (desiredPos.Distance(wtarget.ServerPosition) > W.Range)
                             {
-                                return;
+                                continue;
                             }
                         }
                     }
