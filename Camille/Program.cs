@@ -24,7 +24,6 @@ namespace Camille
         internal static bool IsDashing => Player.HasBuff(EDashBuffName + "1") || Player.HasBuff(EDashBuffName + "2");
         internal static bool ChargingW => Player.HasBuff(WBuffName);
         internal static bool KnockedBack(Obj_AI_Base target) => target != null && target.HasBuff(KnockBackBuffName);
-
         internal static string WBuffName => "camillewconeslashcharge";
         internal static string EDashBuffName => "camilleedash";
         internal static string WallBuffName => "camilleedashtoggle"; 
@@ -651,7 +650,12 @@ namespace Camille
                     LockW(target);
 
                 if (RootMenu.Item("usewcombo").GetValue<bool>())
-                    UseW(target);
+                {
+                    if (!E.IsReady() || !RootMenu.Item("useecombo").GetValue<bool>())
+                    {
+                        UseW(target);
+                    }
+                }
 
                 if (RootMenu.Item("useecombo").GetValue<bool>())
                     UseE(target.ServerPosition);
@@ -898,14 +902,8 @@ namespace Camille
                 {
                     W.UpdateSourcePosition(bestWallPoint.To3D(), bestWallPoint.To3D());
 
-                    if (combo && RootMenu.Item("www").GetValue<bool>()) // dumb lol
+                    if (combo && RootMenu.Item("www").GetValue<bool>()) 
                     {
-                        var mouseDir = Player.ServerPosition + (Game.CursorPos - Player.ServerPosition).Normalized() * 265;
-                        var wallPointReversed = bestWallPoint.Extend(mouseDir.To2D(), 1000);
-
-                        // expiremental
-                        // xd
-
                         int dashSpeedEst = 1450;
                         int hookSpeedEst = 1250;
 
@@ -916,13 +914,13 @@ namespace Camille
                         var travelTime = 250 + meToWall + wallToHero;
                         if (travelTime >= 1250 && travelTime <= 1750)
                         {
-                            W.Cast(wallPointReversed);
+                            W.Cast(p);
                         }
 
                         if (travelTime > 1750)
                         {
                             var delay = 100 + (travelTime - 1750);
-                            Utility.DelayAction.Add((int) delay, () => W.Cast(wallPointReversed));
+                            Utility.DelayAction.Add((int) delay, () => W.Cast(p));
                         }
                     }
                 }
