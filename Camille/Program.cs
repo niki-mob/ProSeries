@@ -51,7 +51,7 @@ namespace Camille
                 Q = new Spell(SpellSlot.Q, 135f);
                 W = new Spell(SpellSlot.W, 625f);
                 E = new Spell(SpellSlot.E, 975f);
-                R = new Spell(SpellSlot.R, 375f);
+                R = new Spell(SpellSlot.R, 465f);
 
                 RootMenu = new Menu("Camille#", "camille", true);
 
@@ -99,8 +99,18 @@ namespace Camille
                     revade.AddItem(new MenuItem("revade" + spell.SDataName.ToLower(), "-> " + spell.ChampionName + " R"))
                         .SetValue(true);
                 }
-                
-                tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(true);
+
+                var mmenu = new Menu("-] Magnet", "mmenu");
+                mmenu.AddItem(new MenuItem("lockw", "Magnet W [Beta]")).SetValue(true);
+                mmenu.AddItem(new MenuItem("lockwcombo", "-> Combo")).SetValue(true);
+                mmenu.AddItem(new MenuItem("lockwharass", "-> Harass")).SetValue(true);
+                mmenu.AddItem(new MenuItem("lockwclear", "-> Clear")).SetValue(true);
+                mmenu.AddItem(new MenuItem("lockorbwalk", "Magnet Orbwalking"))
+                    .SetValue(false).SetTooltip("Coming Soon").ValueChanged +=
+                    (sender, eventArgs) => eventArgs.Process = false;
+
+
+                tcmenu.AddItem(new MenuItem("r33", "Orbwalk Focus R Target")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("r55", "Only R Selected Target")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
@@ -109,6 +119,7 @@ namespace Camille
                 comenu.AddSubMenu(tcmenu);
 
                 comenu.AddSubMenu(revade);
+                comenu.AddSubMenu(mmenu);
                 comenu.AddSubMenu(abmenu);
 
 
@@ -126,8 +137,8 @@ namespace Camille
                 clmenu.AddItem(new MenuItem("t11", "Use Hydra")).SetValue(true);
                 clmenu.AddItem(new MenuItem("useqclear", "Use Q")).SetValue(true);
                 clmenu.AddItem(new MenuItem("usewclear", "Use W")).SetValue(true);
-                clmenu.AddItem(new MenuItem("usewlane", "-> Use In Lane")).SetValue(false);
-                clmenu.AddItem(new MenuItem("usewlanehit", "-> Minimum Hit in Lane")).SetValue(new Slider(3, 1, 6));
+                clmenu.AddItem(new MenuItem("usewlane", "-> Use W In Lane")).SetValue(false);
+                clmenu.AddItem(new MenuItem("usewlanehit", "-> Minimum W Hit in Lane")).SetValue(new Slider(3, 1, 6));
                 clmenu.AddItem(new MenuItem("useeclear", "Use E")).SetValue(true);
                 clmenu.AddItem(new MenuItem("clearmana", "Clear Mana %")).SetValue(new Slider(35));
                 RootMenu.AddSubMenu(clmenu);
@@ -189,69 +200,66 @@ namespace Camille
         private static void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             var attacker = sender as Obj_AI_Hero;
-            if (attacker != null && attacker.IsEnemy)
+            if (attacker != null && attacker.IsEnemy && attacker.Distance(Player) <= R.Range + 25)
             {
                 var aiTarget = args.Target as Obj_AI_Hero;
 
-                var bestTarget = TargetSelector.GetTarget(R.Range + 100, TargetSelector.DamageType.Physical);
-                if (bestTarget == null)
+                var tsTarget = TargetSelector.GetTarget(R.Range, TargetSelector.DamageType.Physical);
+                if (tsTarget == null)
                 {
                     return;
                 }
 
                 if (R.IsReady() && RootMenu.Item("revade").GetValue<bool>())
                 {
-                    if (attacker.Distance(Player) <= R.Range + 35)
+                    foreach (var spell in Evadeable.DangerList.Select(entry => entry.Value)
+                        .Where(spell => spell.SDataName.ToLower() == args.SData.Name.ToLower())
+                        .Where(spell => RootMenu.Item("revade" + spell.SDataName.ToLower()).GetValue<bool>()))
                     {
-                        foreach (var spell in Evadeable.DangerList.Select(entry => entry.Value)
-                            .Where(spell => spell.SDataName.ToLower() == args.SData.Name.ToLower())
-                            .Where(spell => RootMenu.Item("revade" + spell.SDataName.ToLower()).GetValue<bool>()))
+                        switch (spell.EvadeType)
                         {
-                            switch (spell.EvadeType)
-                            {
-                                case EvadeType.Target:
-                                    if (aiTarget != null && aiTarget.IsMe)
-                                    {
-                                        UseR(bestTarget, true);
-                                    }
-                                    break;
+                            case EvadeType.Target:
+                                if (aiTarget != null && aiTarget.IsMe)
+                                {
+                                    UseR(tsTarget, true);
+                                }
+                                break;
 
-                                case EvadeType.SelfCast:
-                                    if (attacker.Distance(Player) <= R.Range)
-                                    {
-                                        UseR(bestTarget, true);
-                                    }
-                                    break;
-                                case EvadeType.SkillshotLine:
-                                    var lineStart = args.Start.To2D();
-                                    var lineEnd = args.End.To2D();
+                            case EvadeType.SelfCast:
+                                if (attacker.Distance(Player) <= R.Range)
+                                {
+                                    UseR(tsTarget, true);
+                                }
+                                break;
+                            case EvadeType.SkillshotLine:
+                                var lineStart = args.Start.To2D();
+                                var lineEnd = args.End.To2D();
 
-                                    if (lineStart.Distance(lineEnd) < R.Range)
-                                        lineEnd = lineStart + (lineEnd - lineStart).Normalized() * R.Range + 25;
+                                if (lineStart.Distance(lineEnd) < R.Range)
+                                    lineEnd = lineStart + (lineEnd - lineStart).Normalized() * R.Range + 25;
 
-                                    if (lineStart.Distance(lineEnd) > R.Range)
-                                        lineEnd = lineStart + (lineEnd - lineStart).Normalized() * R.Range * 2;
+                                if (lineStart.Distance(lineEnd) > R.Range)
+                                    lineEnd = lineStart + (lineEnd - lineStart).Normalized() * R.Range * 2;
 
-                                    var spellProj = Player.ServerPosition.To2D().ProjectOn(lineStart, lineEnd);
-                                    if (spellProj.IsOnSegment)
-                                    {
-                                        UseR(bestTarget, true);
-                                    }
-                                    break;
+                                var spellProj = Player.ServerPosition.To2D().ProjectOn(lineStart, lineEnd);
+                                if (spellProj.IsOnSegment)
+                                {
+                                    UseR(tsTarget, true);
+                                }
+                                break;
 
-                                case EvadeType.SkillshotCirce:
-                                    var curStart = args.Start.To2D();
-                                    var curEnd = args.End.To2D();
+                            case EvadeType.SkillshotCirce:
+                                var curStart = args.Start.To2D();
+                                var curEnd = args.End.To2D();
 
-                                    if (curStart.Distance(curEnd) > R.Range)
-                                        curEnd = curStart + (curEnd - curStart).Normalized() * R.Range;
+                                if (curStart.Distance(curEnd) > R.Range)
+                                    curEnd = curStart + (curEnd - curStart).Normalized() * R.Range;
 
-                                    if (curEnd.Distance(Player) <= R.Range)
-                                    {
-                                        UseR(bestTarget, true);
-                                    }
-                                    break;
-                            }
+                                if (curEnd.Distance(Player) <= R.Range)
+                                {
+                                    UseR(tsTarget, true);
+                                }
+                                break;
                         }
                     }
                 }
@@ -607,6 +615,9 @@ namespace Camille
             var target = TargetSelector.GetTarget(E.IsReady() ? E.Range * 2 : W.Range, TargetSelector.DamageType.Physical);
             if (target.IsValidTarget() && !target.IsZombie)
             {
+                if (RootMenu.Item("lockwcombo").GetValue<bool>())
+                    LockW(target);
+
                 if (RootMenu.Item("usewcombo").GetValue<bool>())
                     UseW(target);
 
@@ -623,6 +634,9 @@ namespace Camille
             var target = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
             if (target.IsValidTarget() && !target.IsZombie)
             {
+                if (RootMenu.Item("lockwcharass").GetValue<bool>())
+                    LockW(target);
+
                 if (RootMenu.Item("usewharass").GetValue<bool>())
                     UseW(target);
             }
@@ -637,6 +651,9 @@ namespace Camille
             {
                 if (!unit.Name.Contains("Mini"))
                 {
+                    if (RootMenu.Item("lockwclear").GetValue<bool>())
+                        LockW(unit);
+
                     if (RootMenu.Item("usewclear").GetValue<bool>())
                     {
                         UseW(unit);
@@ -650,6 +667,9 @@ namespace Camille
                 }
                 else
                 {
+                    if (RootMenu.Item("lockwclear").GetValue<bool>())
+                        LockW(unit);
+
                     if (Player.CountEnemiesInRange(1000) < 1 ||
                         !RootMenu.Item("clearnearenemy").GetValue<bool>())
                     {
@@ -677,7 +697,7 @@ namespace Camille
                 {
                     if (Q.Cast())
                     {
-                        //Orbwalking.ResetAutoAttackTimer(); // TEMP
+                        return;
                     }
                 }
                 else
@@ -687,7 +707,7 @@ namespace Camille
                     {
                         if (Q.Cast())
                         {
-                            //Orbwalking.ResetAutoAttackTimer(); // TEMP
+                            return;
                         }
                     }
                 }
@@ -696,12 +716,7 @@ namespace Camille
 
         static void UseW(Obj_AI_Base target)
         {
-            if (OnWall || !CanW(target))
-            {
-                return;
-            }
-
-            if (ChargingW || IsDashing)
+            if (ChargingW || IsDashing || OnWall || !CanW(target))
             {
                 return;
             }
@@ -714,6 +729,35 @@ namespace Camille
             if (W.IsReady() && target.Distance(Player.ServerPosition) <= W.Range)
             {
                 W.Cast(target.ServerPosition);
+            }
+        }
+
+        static void LockW(Obj_AI_Base target)
+        {
+            if (!RootMenu.Item("lockw").GetValue<bool>())
+            {
+                return;
+            }
+
+            if (OnWall || IsDashing || target == null)
+            {
+                return;
+            }
+
+            if (ChargingW && Orbwalker.ActiveMode != Orbwalking.OrbwalkingMode.None)
+            {
+                Orbwalker.SetAttack(false);
+            }
+
+            if (ChargingW && target.Distance(Player) <= W.Range + 35)
+            {
+                var pos = Prediction.GetPrediction(target, Game.Ping).UnitPosition.Extend(Player.ServerPosition, W.Range - 65);
+                if (pos.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
+                {
+                    return;
+                }
+
+                Player.IssueOrder(GameObjectOrder.MoveTo, pos, false);
             }
         }
 
@@ -889,7 +933,7 @@ namespace Camille
 
             if (Orbwalking.InAutoAttackRange(target))
             {
-                if (Player.GetAutoAttackDamage(target, true) * 2 + Qdmg(target) >= target.Health)
+                if (Player.GetAutoAttackDamage(target, true) * 2 + Qdmg(target, false) >= target.Health)
                 {
                     return false;
                 }
@@ -925,7 +969,6 @@ namespace Camille
             return Math.Min(qq, Player.Mana / Q.ManaCost) * Qdmg(unit, false) + Wdmg(unit) +
                    RBonus(Player.GetAutoAttackDamage(unit, true), unit) * qq + Edmg(unit);
         }
-
 
         private static double Qdmg(Obj_AI_Base target, bool includeq2 = true)
         {
