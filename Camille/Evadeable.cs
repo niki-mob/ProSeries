@@ -21,11 +21,13 @@ namespace Camille
     {
         public AvoidType Type;
         public Obj_GeneralParticleEmitter Emitter;
+        public float Radius;
 
-        public DangerPos(Obj_GeneralParticleEmitter obj, AvoidType type)
+        public DangerPos(Obj_GeneralParticleEmitter obj, AvoidType type, float radius)
         {
             this.Type = type;
             this.Emitter = obj;
+            this.Radius = radius;
         }
     }
 

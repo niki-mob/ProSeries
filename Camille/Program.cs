@@ -325,12 +325,12 @@ namespace Camille
             var emitter = sender as Obj_GeneralParticleEmitter;
             if (emitter != null && emitter.Name.ToLower() == "camille_base_r_indicator_edge.troy")
             {
-                DangerPoints[Game.Time] = new DangerPos(emitter, AvoidType.Outside);
+                DangerPoints[Game.Time] = new DangerPos(emitter, AvoidType.Outside, 450f); // 450f ?
             }
 
             if (emitter != null && emitter.Name.ToLower() == "veigar_base_e_cage_red.troy")
             {
-                DangerPoints[Game.Time] = new DangerPos(emitter, AvoidType.Inside);
+                DangerPoints[Game.Time] = new DangerPos(emitter, AvoidType.Inside, 400f); // 400f ?
             }
         }
 
@@ -355,8 +355,40 @@ namespace Camille
                         var heroDirection = (aiHero.Position - Player.Position).To2D().Normalized();
                         if (heroDirection.AngleBetween(issueOrderDirection) > 10)
                         {
-                            var isDangerPos = aiHero.ServerPosition.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active;
-                            if (isDangerPos == false)
+                            var anyDangerousPos = false;
+                            var dashEndPos = Player.Position.To2D() + heroDirection * Player.Distance(aiHero.Position);
+
+                            if (Player.Position.To2D().Distance(dashEndPos) > E.Range)
+                                dashEndPos = Player.Position.To2D() + heroDirection * E.Range;
+
+                            foreach (var x in DangerPoints)
+                            {
+                                var obj = x.Value;
+                                if (obj.Type == AvoidType.Outside && dashEndPos.Distance(obj.Emitter.Position) > obj.Radius)
+                                {
+                                    anyDangerousPos = true;
+                                    break;
+                                }
+
+                                if (obj.Type == AvoidType.Inside)
+                                {
+                                    var proj = obj.Emitter.Position.To2D().ProjectOn(Player.Position.To2D(), dashEndPos);
+                                    if (proj.IsOnSegment && proj.SegmentPoint.Distance(obj.Emitter.Position) <= obj.Radius)
+                                    {
+                                        anyDangerousPos = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (dashEndPos.To3D().UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
+                                anyDangerousPos = true;
+
+                            if (anyDangerousPos)
+                            {
+                                args.Process = false;
+                            }
+                            else
                             {
                                 args.Process = false;
                                 Player.IssueOrder(GameObjectOrder.MoveTo, aiHero.ServerPosition, false);
@@ -814,7 +846,7 @@ namespace Camille
                     foreach (var x in DangerPoints)
                     {
                         var obj = x.Value;
-                        if (obj.Type == AvoidType.Outside && desiredPos.Distance(obj.Emitter.Position) > 450)
+                        if (obj.Type == AvoidType.Outside && desiredPos.Distance(obj.Emitter.Position) > obj.Radius)
                         {
                             anyDangerousPos = true;
                             break;
@@ -823,7 +855,7 @@ namespace Camille
                         if (obj.Type == AvoidType.Inside)
                         {
                             var proj = obj.Emitter.Position.To2D().ProjectOn(desiredPos, p.To2D());
-                            if (proj.IsOnSegment && proj.SegmentPoint.Distance(obj.Emitter.Position) <= 150)
+                            if (proj.IsOnSegment && proj.SegmentPoint.Distance(obj.Emitter.Position) <= obj.Radius)
                             {
                                 anyDangerousPos = true;
                                 break;
@@ -864,6 +896,8 @@ namespace Camille
             {
                 if (W.IsReady() && RootMenu.Item("usewcombo").GetValue<bool>())
                 {
+                    W.UpdateSourcePosition(bestWallPoint.To3D(), bestWallPoint.To3D());
+
                     if (combo && RootMenu.Item("www").GetValue<bool>()) // dumb lol
                     {
                         var mouseDir = Player.ServerPosition + (Game.CursorPos - Player.ServerPosition).Normalized() * 265;
@@ -975,10 +1009,14 @@ namespace Camille
             if (unit == null)
                 return 0d;
 
-            var qq = new[] { 2, 3, 4, 4 } [(Math.Min(Player.Level, 18) / 6)];
+            var extraqq = new[] { 1, 1, 2, 2, 3 };
+            var qcount = new[] { 2, 3, 4, 4 } [(Math.Min(Player.Level, 18) / 6)];
 
-            return Math.Min(qq, Player.Mana / Q.ManaCost) * Qdmg(unit, false) + Wdmg(unit) +
-                   RBonus(Player.GetAutoAttackDamage(unit, true), unit) * qq + Edmg(unit);
+            qcount += (int) Math.Abs(Player.PercentCooldownMod) * 100 / 10;
+
+            return Math.Min(qcount * extraqq[(int) (Math.Abs(Player.PercentCooldownMod) * 100/10)], 
+                    Player.Mana / Q.ManaCost) * Qdmg(unit, false) + Wdmg(unit) +
+                        RBonus(Player.GetAutoAttackDamage(unit, true), unit) * qcount + Edmg(unit);
         }
 
         private static double Qdmg(Obj_AI_Base target, bool includeq2 = true)
