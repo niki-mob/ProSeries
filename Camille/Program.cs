@@ -31,17 +31,9 @@ namespace Camille
         internal static string QBuffName => "camilleqprimingstart";
         internal static string Q2BuffName => "camilleqprimingcomplete";
         internal static string RBuffName => "camillertether";
-        internal static string REmitterName => "Camille_Base_R_Indicator_Edge.troy";
         internal static string KnockBackBuffName => "camilleeknockback2";
 
-        internal static int TickLimiter;
-        internal static Dictionary<float, Obj_GeneralParticleEmitter> rPoint =
-            new Dictionary<float, Obj_GeneralParticleEmitter>();
-
-        // Camille_Base_R_tar_buf.troy, Camille_Base_R_cas_sound.troy
-        // Camille_Base_R_BA_tar.troy 
-        // camillewconeslashcharge
-        // camilleeonwall
+        internal static Dictionary<float, DangerPos> DangerPoints = new Dictionary<float, DangerPos>();
 
         static void Main(string[] args)
         {
@@ -111,7 +103,6 @@ namespace Camille
                 tcmenu.AddItem(new MenuItem("r33", "Focus R Target")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("r55", "Only R Selected Target")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
-                tcmenu.AddItem(new MenuItem("blocke", "Dont E Leave Ultimatum")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
                 tcmenu.AddItem(new MenuItem("enhancede", "Enhanced E Precision")).SetValue(false);
                 tcmenu.AddItem(new MenuItem("www", "Expirimental Combo")).SetValue(false).SetTooltip("W -> E");
@@ -324,9 +315,14 @@ namespace Camille
         private static void Obj_GeneralParticleEmitter_OnCreate(GameObject sender, EventArgs args)
         {
             var emitter = sender as Obj_GeneralParticleEmitter;
-            if (emitter != null && emitter.Name.ToLower() == REmitterName.ToLower())
+            if (emitter != null && emitter.Name.ToLower() == "camille_base_r_indicator_edge.troy")
             {
-                rPoint[Game.Time] = emitter;
+                DangerPoints[Game.Time] = new DangerPos(emitter, AvoidType.Outside);
+            }
+
+            if (emitter != null && emitter.Name.ToLower() == "veigar_base_e_cage_red.troy")
+            {
+                DangerPoints[Game.Time] = new DangerPos(emitter, AvoidType.Inside);
             }
         }
 
@@ -535,19 +531,19 @@ namespace Camille
         {
             Orbwalker.SetAttack(!ChargingW);
 
-            foreach (var entry in rPoint)
+            foreach (var entry in DangerPoints)
             {
-                var timestamp = entry.Key;
-                if (Game.Time - timestamp > 4f)
+                var ultimatum = entry.Value.Emitter;
+                if (ultimatum.IsValid == false || ultimatum.IsVisible == false)
                 {
-                    rPoint.Remove(timestamp);
+                    DangerPoints.Remove(entry.Key);
                     break;
                 }
 
-                var ultimatum = entry.Value;
-                if (!ultimatum.IsValid || !ultimatum.IsVisible)
+                var timestamp = entry.Key;
+                if (Game.Time - timestamp > 4f)
                 {
-                    rPoint.Remove(timestamp);
+                    DangerPoints.Remove(timestamp);
                     break;
                 }
             }
@@ -735,15 +731,14 @@ namespace Camille
                     return;
                 }
 
-                if (RootMenu.Item("blocke").GetValue<bool>())
+                if (p.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
                 {
-                    if (rPoint.Any(entry => p.Distance(entry.Value.Position) > 450))
-                    {
-                        return;
-                    }
+                    return;
                 }
 
-                if (p.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
+                if (DangerPoints.Any(i => 
+                    p.Distance(i.Value.Emitter.Position) > 450 && i.Value.Type == AvoidType.Outside ||
+                        p.Distance(i.Value.Emitter.Position) < 450 && i.Value.Type == AvoidType.Inside))
                 {
                     return;
                 }
@@ -779,12 +774,11 @@ namespace Camille
 
                     var desiredPos = new Vector2(xPos, yPos);
 
-                    if (RootMenu.Item("blocke").GetValue<bool>())
+                    if (DangerPoints.Any(x => 
+                            desiredPos.Distance(x.Value.Emitter.Position) > 450 &&  x.Value.Type == AvoidType.Outside ||
+                                desiredPos.Distance(x.Value.Emitter.Position) < 450 && x.Value.Type == AvoidType.Inside))
                     {
-                        if (rPoint.Any(entry => desiredPos.Distance(entry.Value.Position) > 450))
-                        {
-                            continue;
-                        }
+                        continue;
                     }
 
                     if (ChargingW)

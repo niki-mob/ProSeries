@@ -11,6 +11,24 @@ namespace Camille
         SelfCast
     }
 
+    enum AvoidType
+    {
+        Inside,
+        Outside
+    }
+
+    class DangerPos
+    {
+        public AvoidType Type;
+        public Obj_GeneralParticleEmitter Emitter;
+
+        public DangerPos(Obj_GeneralParticleEmitter obj, AvoidType type)
+        {
+            this.Type = type;
+            this.Emitter = obj;
+        }
+    }
+
     class Evadeable
     {
         public string SDataName;
