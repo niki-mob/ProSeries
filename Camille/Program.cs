@@ -739,7 +739,7 @@ namespace Camille
                 return;
             }
 
-            if (OnWall || IsDashing || target == null)
+            if (OnWall || IsDashing || target == null || !CanW(target))
             {
                 return;
             }
