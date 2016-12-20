@@ -666,7 +666,7 @@ namespace Camille
             var target = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
             if (target.IsValidTarget() && !target.IsZombie)
             {
-                if (RootMenu.Item("lockwcharass").GetValue<bool>())
+                if (RootMenu.Item("lockwharass").GetValue<bool>())
                     LockW(target);
 
                 if (RootMenu.Item("usewharass").GetValue<bool>())
