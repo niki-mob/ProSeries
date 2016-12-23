@@ -24,6 +24,7 @@ namespace Camille
         internal static bool IsDashing => Player.HasBuff(EDashBuffName + "1") || Player.HasBuff(EDashBuffName + "2");
         internal static bool ChargingW => Player.HasBuff(WBuffName);
         internal static bool KnockedBack(Obj_AI_Base target) => target != null && target.HasBuff(KnockBackBuffName);
+
         internal static string WBuffName => "camillewconeslashcharge";
         internal static string EDashBuffName => "camilleedash";
         internal static string WallBuffName => "camilleedashtoggle"; 
@@ -61,17 +62,14 @@ namespace Camille
                 var kemenu = new Menu("-] Keys", "kemenu");
                 kemenu.AddItem(new MenuItem("usecombo", "Combo [active]")).SetValue(new KeyBind(32, KeyBindType.Press));
                 kemenu.AddItem(new MenuItem("useharass", "Harass [active]")).SetValue(new KeyBind('G', KeyBindType.Press));
-                kemenu.AddItem(new MenuItem("useclear", "Clear [active]")).SetValue(new KeyBind('V', KeyBindType.Press));
+                kemenu.AddItem(new MenuItem("usewcclear", "Wave Clear [active]")).SetValue(new KeyBind('V', KeyBindType.Press));
+                kemenu.AddItem(new MenuItem("usejgclear", "Jungle Clear [active]")).SetValue(new KeyBind('V', KeyBindType.Press));
                 kemenu.AddItem(new MenuItem("useflee", "Flee [active]")).SetValue(new KeyBind('A', KeyBindType.Press));
                 RootMenu.AddSubMenu(kemenu);
 
                 var comenu = new Menu("-] Combo", "cmenu");
 
                 var tcmenu = new Menu("-] Extra", "tcmenu");
-
-                //tcmenu.AddItem(new MenuItem("autoq", "Q Killsteal")).SetValue(true);
-                //tcmenu.AddItem(new MenuItem("autoe1", "E Killsteal")).SetValue(true);
-                //tcmenu.AddItem(new MenuItem("autoeq", "E -> Q Killsteal")).SetValue(true);
 
                 var abmenu = new Menu("-] Skills", "abmenu");
 
@@ -109,8 +107,8 @@ namespace Camille
                     (sender, eventArgs) => eventArgs.Process = false;
 
 
-                tcmenu.AddItem(new MenuItem("r33", "Orbwalk Focus R Target")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("r55", "Only R Selected Target")).SetValue(false);
+                tcmenu.AddItem(new MenuItem("r33", "Orbwalk Focus R Target")).SetValue(true);
                 tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
                 tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
                 tcmenu.AddItem(new MenuItem("enhancede", "Enhanced E Precision")).SetValue(false);
@@ -132,14 +130,24 @@ namespace Camille
                 RootMenu.AddSubMenu(hamenu);
 
                 var clmenu = new Menu("-] Clear", "clmenu");
+
+                var jgmenu = new Menu("Jungle", "jgmenu");
+                jgmenu.AddItem(new MenuItem("jgclearmana", "Minimum Mana %")).SetValue(new Slider(35));
+                jgmenu.AddItem(new MenuItem("useqjgclear", "Use Q")).SetValue(true);
+                jgmenu.AddItem(new MenuItem("usewjgclear", "Use W")).SetValue(true);
+                jgmenu.AddItem(new MenuItem("useejgclear", "Use E")).SetValue(true);
+                clmenu.AddSubMenu(jgmenu);
+
+                var wcmenu = new Menu("WaveClear", "wcmenu");
+                wcmenu.AddItem(new MenuItem("wcclearmana", "Minimum Mana %")).SetValue(new Slider(55));
+                wcmenu.AddItem(new MenuItem("useqwcclear", "Use Q")).SetValue(true);
+                wcmenu.AddItem(new MenuItem("usewwcclear", "Use W")).SetValue(true);
+                wcmenu.AddItem(new MenuItem("usewwcclearhit", "-> Min Hit >=")).SetValue(new Slider(3, 1, 6));
+                clmenu.AddSubMenu(wcmenu);
+
                 clmenu.AddItem(new MenuItem("clearnearenemy", "Dont Clear Near Enemy")).SetValue(true);
                 clmenu.AddItem(new MenuItem("t11", "Use Hydra")).SetValue(true);
-                clmenu.AddItem(new MenuItem("useqclear", "Use Q")).SetValue(true);
-                clmenu.AddItem(new MenuItem("usewclear", "Use W")).SetValue(true);
-                clmenu.AddItem(new MenuItem("usewlane", "-> Use W In Lane")).SetValue(false);
-                clmenu.AddItem(new MenuItem("usewlanehit", "-> Minimum W Hit in Lane")).SetValue(new Slider(3, 1, 6));
-                clmenu.AddItem(new MenuItem("useeclear", "Use E")).SetValue(true);
-                clmenu.AddItem(new MenuItem("clearmana", "Clear Mana %")).SetValue(new Slider(35));
+
                 RootMenu.AddSubMenu(clmenu);
 
                 var fmenu = new Menu("-] Flee", "fmenu");
@@ -397,7 +405,7 @@ namespace Camille
                 }
             }
 
-            if (OnWall && E.IsReady() && RootMenu.Item("useclear").GetValue<KeyBind>().Active)
+            if (OnWall && E.IsReady() && RootMenu.Item("usejgclear").GetValue<KeyBind>().Active)
             {
                 var issueOrderPos = args.TargetPosition;
                 if (sender.IsMe && args.Order == GameObjectOrder.MoveTo)
@@ -409,12 +417,12 @@ namespace Camille
 
                     if (aiMob != null)
                     {
-                        var heroDirection = (aiMob.Position - Player.Position).To2D().Normalized();
-                        if (heroDirection.AngleBetween(issueOrderDirection) > 10)
-                        {
+                        //var heroDirection = (aiMob.Position - Player.Position).To2D().Normalized();
+                        //if (heroDirection.AngleBetween(issueOrderDirection) > 10)
+                        //{
                             args.Process = false;
                             Player.IssueOrder(GameObjectOrder.MoveTo, aiMob.ServerPosition, false);
-                        }
+                        //}
                     }
                 }
             }
@@ -462,29 +470,95 @@ namespace Camille
                     }
                 }
 
-                if (RootMenu.Item("useclear").GetValue<KeyBind>().Active)
+                if (RootMenu.Item("usejgclear").GetValue<KeyBind>().Active)
                 {
                     var aiMob = args.Target as Obj_AI_Minion;
                     if (aiMob != null && aiMob.IsValidTarget())
                     {
-                        if (Player.UnderTurret(true) && Player.CountEnemiesInRange(1000) > 0)
+                        if (!Player.UnderTurret(true) || Player.CountEnemiesInRange(1000) <= 0)
                         {
-                            return;
-                        }
-
-                        if (!Q.IsReady() || HasQ && !HasQ2)
-                        {
-                            if (RootMenu.Item("t11").GetValue<bool>())
+                            if (!Q.IsReady() || HasQ && !HasQ2)
                             {
-                                if (!aiMob.IsMinion || (Player.CountEnemiesInRange(900) < 1 
-                                    || !RootMenu.Item("clearnearenemy").GetValue<bool>() || Player.UnderAllyTurret()))
+                                if (RootMenu.Item("t11").GetValue<bool>())
                                 {
-                                    if (Items.CanUseItem(3077))
-                                        Items.UseItem(3077);
-                                    if (Items.CanUseItem(3074))
-                                        Items.UseItem(3074);
-                                    if (Items.CanUseItem(3748))
-                                        Items.UseItem(3748);
+                                    if (!aiMob.IsMinion || (Player.CountEnemiesInRange(900) < 1
+                                                            || !RootMenu.Item("clearnearenemy").GetValue<bool>() ||
+                                                            Player.UnderAllyTurret()))
+                                    {
+                                        if (Items.CanUseItem(3077))
+                                            Items.UseItem(3077);
+                                        if (Items.CanUseItem(3074))
+                                            Items.UseItem(3074);
+                                        if (Items.CanUseItem(3748))
+                                            Items.UseItem(3748);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    #region AA-> Q any attackable
+                    var unit = args.Target as AttackableUnit;
+                    if (unit != null)
+                    {
+                        if (Player.CountEnemiesInRange(1000) < 1 || Player.UnderAllyTurret()
+                            || !RootMenu.Item("clearnearenemy").GetValue<bool>())
+                        {
+                            // if jungle minion
+                            var m = unit as Obj_AI_Minion;
+                            if (m != null)
+                            {
+                                if (!m.CharData.BaseSkinName.StartsWith("sru_plant") && !m.Name.StartsWith("Minion"))
+                                {
+                                    #region AA -> Q
+
+                                    if (Q.IsReady() && RootMenu.Item("useqjgclear").GetValue<bool>())
+                                    {
+                                        if (m.Position.Distance(Player.ServerPosition) <= Q.Range + 90)
+                                        {
+                                            UseQ(m);
+                                        }
+                                    }
+
+                                    #endregion
+                                }
+                            }
+
+                            if (Q.IsReady() && !unit.Name.StartsWith("Minion"))
+                            {
+                                if (RootMenu.Item("useqjgclear").GetValue<bool>())
+                                {
+                                    UseQ(unit);
+                                }
+                            }
+                        }
+                    }
+
+                    #endregion
+                }
+
+                if (RootMenu.Item("usewcclear").GetValue<KeyBind>().Active)
+                {
+                    var aiMob = args.Target as Obj_AI_Minion;
+                    if (aiMob != null && aiMob.IsValidTarget())
+                    {
+                        if (!Player.UnderTurret(true) || Player.CountEnemiesInRange(1000) <= 0)
+                        {
+                            if (!Q.IsReady() || HasQ && !HasQ2)
+                            {
+                                if (RootMenu.Item("t11").GetValue<bool>())
+                                {
+                                    if (!aiMob.IsMinion || (Player.CountEnemiesInRange(900) < 1
+                                                            || !RootMenu.Item("clearnearenemy").GetValue<bool>() ||
+                                                            Player.UnderAllyTurret()))
+                                    {
+                                        if (Items.CanUseItem(3077))
+                                            Items.UseItem(3077);
+                                        if (Items.CanUseItem(3074))
+                                            Items.UseItem(3074);
+                                        if (Items.CanUseItem(3748))
+                                            Items.UseItem(3748);
+                                    }
                                 }
                             }
                         }
@@ -503,7 +577,7 @@ namespace Camille
                                 return;
                             }
 
-                            if (Player.Mana / Player.MaxMana * 100 < RootMenu.Item("clearmana").GetValue<Slider>().Value)
+                            if (Player.Mana / Player.MaxMana * 100 < RootMenu.Item("wcclearmana").GetValue<Slider>().Value)
                             {
                                 if (Player.CountEnemiesInRange(1000) > 0 && !Player.UnderAllyTurret())
                                 {
@@ -513,7 +587,7 @@ namespace Camille
 
                             #region AA -> Q 
 
-                            if (Q.IsReady() && RootMenu.Item("useqclear").GetValue<bool>())
+                            if (Q.IsReady() && RootMenu.Item("useqwcclear").GetValue<bool>())
                             {
                                 if (aiBase.Distance(Player.ServerPosition) <= Q.Range + 90)
                                 {
@@ -540,7 +614,7 @@ namespace Camille
                             {
                                 #region AA -> Q
 
-                                if (Q.IsReady() && RootMenu.Item("useqclear").GetValue<bool>())
+                                if (Q.IsReady() && RootMenu.Item("useqwcclear").GetValue<bool>())
                                 {
                                     if (m.Position.Distance(Player.ServerPosition) <= Q.Range + 90)
                                     {
@@ -553,7 +627,7 @@ namespace Camille
 
                             if (Q.IsReady())
                             {
-                                if (RootMenu.Item("useqclear").GetValue<bool>())
+                                if (RootMenu.Item("useqwcclear").GetValue<bool>())
                                 {
                                     UseQ(unit);
                                 }
@@ -621,9 +695,17 @@ namespace Camille
                 Combo();
             }
 
-            if (RootMenu.Item("useclear").GetValue<KeyBind>().Active)
+            if (RootMenu.Item("usewcclear").GetValue<KeyBind>().Active)
             {
-                if (Player.Mana / Player.MaxMana * 100 > RootMenu.Item("clearmana").GetValue<Slider>().Value)
+                if (Player.Mana / Player.MaxMana * 100 > RootMenu.Item("wcclearmana").GetValue<Slider>().Value)
+                {
+                    Clear();
+                }
+            }
+
+            if (RootMenu.Item("usejgclear").GetValue<KeyBind>().Active)
+            {
+                if (Player.Mana / Player.MaxMana * 100 > RootMenu.Item("jgclearmana").GetValue<Slider>().Value)
                 {
                     Clear();
                 }
@@ -690,14 +772,14 @@ namespace Camille
                     if (RootMenu.Item("lockwclear").GetValue<bool>())
                         LockW(unit);
 
-                    if (RootMenu.Item("usewclear").GetValue<bool>())
+                    if (RootMenu.Item("usewjgclear").GetValue<bool>())
                     {
                         UseW(unit);
                     }
 
-                    if (!W.IsReady() || !RootMenu.Item("usewclear").GetValue<bool>())
+                    if (!W.IsReady() || !RootMenu.Item("usewjgclear").GetValue<bool>())
                     {
-                        if (!ChargingW && RootMenu.Item("useeclear").GetValue<bool>())
+                        if (!ChargingW && RootMenu.Item("useejgclear").GetValue<bool>())
                             UseE(unit.ServerPosition, false);
                     }
                 }
@@ -709,13 +791,13 @@ namespace Camille
                     if (Player.CountEnemiesInRange(1000) < 1 ||
                         !RootMenu.Item("clearnearenemy").GetValue<bool>())
                     {
-                        if (RootMenu.Item("usewlane").GetValue<bool>() && W.IsReady())
+                        if (RootMenu.Item("usewwcclear").GetValue<bool>() && W.IsReady())
                         {
                             var farmradius =
                                 MinionManager.GetBestCircularFarmLocation(
                                     minions.Where(x => x.IsMinion).Select(x => x.Position.To2D()).ToList(), 165f, W.Range);
 
-                            if (farmradius.MinionsHit >= RootMenu.Item("usewlanehit").GetValue<Slider>().Value)
+                            if (farmradius.MinionsHit >= RootMenu.Item("usewwcclearhit").GetValue<Slider>().Value)
                             {
                                 W.Cast(farmradius.Position);
                             }
