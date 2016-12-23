@@ -780,7 +780,12 @@ namespace Camille
                     if (!W.IsReady() || !RootMenu.Item("usewjgclear").GetValue<bool>())
                     {
                         if (!ChargingW && RootMenu.Item("useejgclear").GetValue<bool>())
-                            UseE(unit.ServerPosition, false);
+                        {
+                            if (Player.CountEnemiesInRange(1200) <= 0 || !RootMenu.Item("clearnearenemy").GetValue<bool>())
+                            {
+                                UseE(unit.ServerPosition, false);
+                            }
+                        }
                     }
                 }
                 else
