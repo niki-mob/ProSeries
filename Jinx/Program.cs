@@ -388,14 +388,14 @@ namespace Jinx
                     }
                 }
 
-                var qtarget = TargetSelector.GetTarget(525 + RocketRange + windUpDist, TargetSelector.DamageType.Physical);
+                var qtarget = TargetSelector.GetTarget(525 + RocketRange, TargetSelector.DamageType.Physical);
                 if (qtarget.IsValidTarget() && Q.IsReady())
                 {
                     if (Root.Item("useqcombo").GetValue<bool>())
                     {
                         if (!hasRockets && (Player.ManaPercent > 35 || Player.GetAutoAttackDamage(qtarget, true) * 3 > qtarget.Health))
                         {
-                            if (qtarget.Distance(Player.ServerPosition) > 535)
+                            if (qtarget.Distance(Player.ServerPosition) > 525)
                             {
                                 if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
                                 {
