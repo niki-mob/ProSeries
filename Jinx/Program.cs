@@ -39,7 +39,7 @@ namespace Jinx
             E.SetSkillshot(1.2f, 120f, 2300f, false, SkillshotType.SkillshotCircle);
 
             R = new Spell(SpellSlot.R, 3000) { MinHitChance = HitChance.VeryHigh };
-            R.SetSkillshot(0.6f, 140f, 1700f, false, SkillshotType.SkillshotLine);
+            R.SetSkillshot(0.6f, 180f, 1700f, false, SkillshotType.SkillshotLine);
 
             Root = new Menu("Jinx#", "jinx", true);
 
@@ -259,7 +259,7 @@ namespace Jinx
                 realWindUp += (float) (realWindUp * 0.25);
             }
 
-            return delay + realWindUp + extraWindUp;
+            return (float) (delay + extraWindUp + realWindUp);
         }
 
         private static void Orbwalking_BeforeAttack(Orbwalking.BeforeAttackEventArgs args)
@@ -395,22 +395,19 @@ namespace Jinx
                     {
                         if (!hasRockets && (Player.ManaPercent > 35 || Player.GetAutoAttackDamage(qtarget, true) * 3 > qtarget.Health))
                         {
-                            if (qtarget.Distance(Player.ServerPosition) > 525 + windUpDist)
+                            if (qtarget.Distance(Player.ServerPosition) > 535)
                             {
-                                if (WalkDistTime(qtarget) > QSwapTime(Game.Ping, true))
+                                if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
                                 {
-                                    if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
-                                    {
-                                        Orbwalker.ForceTarget(GetHarassObj(qtarget));
-                                        Orbwalking.Orbwalk(GetHarassObj(qtarget), Game.CursorPos);
-                                    }
-
-                                    Q.Cast();
+                                    Orbwalker.ForceTarget(GetHarassObj(qtarget));
+                                    Orbwalking.Orbwalk(GetHarassObj(qtarget), Game.CursorPos);
                                 }
+
+                                Q.Cast();
                             }
                         }
 
-                        if (hasRockets && qtarget.Distance(Player) <= 525 + windUpDist)
+                        if (hasRockets && qtarget.Distance(Player) <= 525)
                         {
                             Q.Cast();
                         }
@@ -562,7 +559,7 @@ namespace Jinx
             {
                 if (!CanClear && !CanCombo && !CanHarass)
                 {
-                    if (Player.ManaPercent <= 35 || !GetCenterMinion().IsValidTarget())
+                    if (Player.ManaPercent <= 35 || !GetCenterMinion().IsValidTarget() && !Player.UnderAllyTurret())
                     {
                         Q.Cast();
                     }
@@ -575,7 +572,7 @@ namespace Jinx
 
                 foreach (var target in ObjectManager.Get<Obj_AI_Hero>().Where(h => h.IsValidTarget(maxDistance)))
                 {
-                    if (target.Health <= GetRDamage(target) * 0.958 && CanRCheck(target))
+                    if (target.Health <= GetRDamage(target) * 0.926 && CanRCheck(target))
                     {
                         R.Cast(target);
                     }
