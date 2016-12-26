@@ -102,9 +102,9 @@ namespace Jinx
             wMenu.AddItem(new MenuItem("useqclear", "Use Q").SetValue(true));
             wMenu.AddItem(new MenuItem("swapbackfarm", "Auto Swap to Minigun")).SetValue(true);
             wMenu.AddItem(new MenuItem("clearqmin", "Minimum minion count")).SetValue(new Slider(3, 2, 6));
-            wMenu.AddItem(new MenuItem("waveclearmana", "Wave Minimum mana %")).SetValue(new Slider(75));
+            wMenu.AddItem(new MenuItem("waveclearmana", "Wave Clear mana %")).SetValue(new Slider(75));
             wMenu.AddItem(new MenuItem("useqclearkill", "-> Or if Will Kill")).SetValue(true);
-            wMenu.AddItem(new MenuItem("jungleclearmana", "Jungle Minimum mana %")).SetValue(new Slider(35));
+            wMenu.AddItem(new MenuItem("jungleclearmana", "Jungle Clear mana %")).SetValue(new Slider(35));
             Root.AddSubMenu(wMenu);
 
             var fmenu = new Menu("-] Flee", "fmenu");
@@ -180,7 +180,8 @@ namespace Jinx
                 return;
             }
 
-            if (gapcloser.Sender.IsValidTarget(300) && Root.Item("autogap").GetValue<bool>())
+            var aiHero = gapcloser.Sender as Obj_AI_Hero;
+            if (aiHero != null && aiHero.IsValidTarget(300) && Root.Item("autoegap").GetValue<bool>())
             {
                 var castPos = gapcloser.End;
                 E.Cast(castPos);
@@ -250,12 +251,12 @@ namespace Jinx
 
         private static float QSwapTime(float extraWindUp, bool toRockets = false)
         {
-            var realWindUp = (1 / Player.AttackDelay) * 1000;
+            var realWindUp = Player.AttackCastDelay * 1000;
             float delay = 0f;
 
             if (toRockets)
             {
-                delay += 250f;
+                delay += Math.Max(0, 250 - Game.Ping / 2f);
                 realWindUp += (float) (realWindUp * 0.25);
             }
 
@@ -362,7 +363,7 @@ namespace Jinx
             }
 
             var hasRockets = Player.GetSpell(SpellSlot.Q).ToggleState == 2;
-            windUpDist = Math.Max(0, QSwapTime(Game.Ping, !hasRockets) / 10);
+            windUpDist = Math.Max(0, ((1/Player.AttackDelay) * 1000) / 10);
 
             if (hasRockets && CanClear)
             {
@@ -391,23 +392,30 @@ namespace Jinx
                 var qtarget = TargetSelector.GetTarget(525 + RocketRange, TargetSelector.DamageType.Physical);
                 if (qtarget.IsValidTarget() && Q.IsReady())
                 {
+                    var reachPos = qtarget.Position.Extend(Player.Position, hasRockets ? 525 + RocketRange : 525).To2D();
                     if (Root.Item("useqcombo").GetValue<bool>())
                     {
                         if (!hasRockets && (Player.ManaPercent > 35 || Player.GetAutoAttackDamage(qtarget, true) * 3 > qtarget.Health))
                         {
-                            if (qtarget.Distance(Player.ServerPosition) > 525)
+                            if (WalkDistTime(reachPos, Player.MoveSpeed) > QSwapTime(80, true) || 
+                                Player.HasBuff("JinxPassiveKillAttackSpeed"))
                             {
-                                if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
+                                if (qtarget.Distance(Player) > 525 || 
+                                    qtarget.Distance(Player) > 500 && qtarget.CountEnemiesInRange(FarmRadius) >= 3)
                                 {
-                                    Orbwalker.ForceTarget(GetHarassObj(qtarget));
-                                    Orbwalking.Orbwalk(GetHarassObj(qtarget), Game.CursorPos);
-                                }
+                                    if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
+                                    {
+                                        Orbwalker.ForceTarget(GetHarassObj(qtarget));
+                                        Orbwalking.Orbwalk(GetHarassObj(qtarget), Game.CursorPos);
+                                    }
 
-                                Q.Cast();
+                                    Q.Cast();
+                                }
                             }
                         }
 
-                        if (hasRockets && qtarget.Distance(Player) <= 525)
+                        if (hasRockets && qtarget.Distance(Player) <= 525 ||
+                            WalkDistTime(reachPos, Player.MoveSpeed) < QSwapTime(80, false))
                         {
                             Q.Cast();
                         }
@@ -444,7 +452,7 @@ namespace Jinx
                 if (Player.Mana / Player.MaxMana * 100 > Root.Item("qharassmana").GetValue<Slider>().Value)
                 {
                     var qtarget = TargetSelector.GetTarget(525 + RocketRange + 250, TargetSelector.DamageType.Physical);
-                    if (CanHarass && qtarget.IsValidTarget() == false && hasRockets)
+                    if (CanHarass && hasRockets && qtarget.IsValidTarget() == false)
                     {
                         if (Root.Item("useqharass").GetValue<bool>())
                         {
@@ -452,7 +460,7 @@ namespace Jinx
                         }
                     }
 
-                    if (Root.Item("useqharass").GetValue<bool>())
+                    if (Root.Item("useqharassminion").GetValue<bool>())
                     {
                         var minion = GetHarassObj(qtarget);
                         if (minion.IsValidTarget() && IsWhiteListed(qtarget))
@@ -493,8 +501,7 @@ namespace Jinx
                                     Q.Cast();
                                 }
 
-                                if (!hasRockets &&
-                                    Player.ManaPercent > Root.Item("qharassmana").GetValue<Slider>().Value)
+                                if (!hasRockets && Player.ManaPercent > Root.Item("qharassmana").GetValue<Slider>().Value)
                                 {
                                     if (qtarget.Distance(Player.ServerPosition) > 525)
                                         Q.Cast();
@@ -612,7 +619,7 @@ namespace Jinx
         {
             if (!combo && (Player.Mana / Player.MaxMana * 100 > Root.Item("waveclearmana").GetValue<Slider>().Value || willkill))
             {
-                var autocount = new[] { 1, 2, 3, 3 };
+                var autocount = new[] { 1, 2, 2, 3 };
                 var aa = autocount[Math.Min(18, Player.Level) / 6];
 
                 var minions = MinionManager.GetMinions(525 + RocketRange);
@@ -624,8 +631,9 @@ namespace Jinx
                 if (centerlocation.MinionsHit >= Root.Item("clearqmin").GetValue<Slider>().Value)
                 {
                     var m = minions.OrderBy(x => x.Distance(centerlocation.Position)).FirstOrDefault();
+                    var dmg = Player.GetAutoAttackDamage(m, true) * aa;
 
-                    if (willkill && Player.GetAutoAttackDamage(m, true) * aa > m?.Health || !willkill)
+                    if (willkill && dmg * 0.958 > m?.Health || !willkill)
                     {
                         return m;
                     }
