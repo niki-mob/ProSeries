@@ -406,8 +406,7 @@ namespace Jinx
                             //    || Root.Item("reduceq").GetValue<bool>() == false
                             //    || lethal)
                             //{
-                                if (qtarget.Distance(Player) > 525 || 
-                                    qtarget.Distance(Player) > 515 && qtarget.CountEnemiesInRange(FarmRadius) >= 3)
+                                if (qtarget.Distance(Player) > 525)
                                 {
                                     if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
                                     {
@@ -420,7 +419,7 @@ namespace Jinx
                             //}
                         }
 
-                        if (hasRockets && qtarget.Distance(Player) <= 525 && qtarget.CountEnemiesInRange(FarmRadius) < 3)
+                        if (hasRockets && qtarget.Distance(Player) <= 525)
                         {
                             Q.Cast();
                         }
