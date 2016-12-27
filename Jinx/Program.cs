@@ -71,7 +71,8 @@ namespace Jinx
 
             var abmenu = new Menu("-] Skills", "abmenu");
             abmenu.AddItem(new MenuItem("useqcombo", "Use Q")).SetValue(true);
-            abmenu.AddItem(new MenuItem("useqcombominion", "-> Q on Minion?")).SetValue(false);
+            //abmenu.AddItem(new MenuItem("reduceq", "Use Beta Q")).SetValue(false);
+            abmenu.AddItem(new MenuItem("useqcombominion", "Use Q Minion")).SetValue(false);
             abmenu.AddItem(new MenuItem("usewcombo", "Use W")).SetValue(true);
             abmenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
             comenu.AddSubMenu(abmenu);
@@ -244,9 +245,10 @@ namespace Jinx
             return (1000 * (Player.Distance(unit) / Player.MoveSpeed)) + Game.Ping;
         }
 
-        private static float WalkDistTime(Vector2 pos, float movespeed)
+        private static float WalkDistTime(Vector2 pos, float movespeed, out float dist)
         {
-            return (1000 * (Player.Distance(pos) / movespeed)) + Game.Ping;
+            dist = Player.Distance(pos);
+            return (1000 * (dist / movespeed)) + Game.Ping;
         }
 
         private static float QSwapTime(float extraWindUp, bool toRockets = false)
@@ -389,19 +391,23 @@ namespace Jinx
                     }
                 }
 
-                var qtarget = TargetSelector.GetTarget(525 + RocketRange, TargetSelector.DamageType.Physical);
+                var qtarget = TargetSelector.GetTarget(535 + RocketRange, TargetSelector.DamageType.Physical);
                 if (qtarget.IsValidTarget() && Q.IsReady())
                 {
+                    //float dist;
                     var reachPos = qtarget.Position.Extend(Player.Position, hasRockets ? 525 + RocketRange : 525).To2D();
                     if (Root.Item("useqcombo").GetValue<bool>())
                     {
-                        if (!hasRockets && (Player.ManaPercent > 35 || Player.GetAutoAttackDamage(qtarget, true) * 3 > qtarget.Health))
+                        var lethal = Player.GetAutoAttackDamage(qtarget, true) * 3 > qtarget.Health;
+                        if (!hasRockets && (Player.ManaPercent > 35 || lethal))
                         {
-                            if (WalkDistTime(reachPos, Player.MoveSpeed) > QSwapTime(80, true) || 
-                                Player.HasBuff("JinxPassiveKillAttackSpeed"))
-                            {
+                            //if (WalkDistTime(reachPos, Player.MoveSpeed, out dist) > QSwapTime(80, true) 
+                            //    || Player.HasBuff("JinxPassiveKillAttackSpeed") 
+                            //    || Root.Item("reduceq").GetValue<bool>() == false
+                            //    || lethal)
+                            //{
                                 if (qtarget.Distance(Player) > 525 || 
-                                    qtarget.Distance(Player) > 500 && qtarget.CountEnemiesInRange(FarmRadius) >= 3)
+                                    qtarget.Distance(Player) > 515 && qtarget.CountEnemiesInRange(FarmRadius) >= 3)
                                 {
                                     if (GetHarassObj(qtarget).IsValidTarget() && Root.Item("useqcombominion").GetValue<bool>())
                                     {
@@ -411,14 +417,18 @@ namespace Jinx
 
                                     Q.Cast();
                                 }
-                            }
+                            //}
                         }
 
-                        if (hasRockets && qtarget.Distance(Player) <= 525 ||
-                            WalkDistTime(reachPos, Player.MoveSpeed) < QSwapTime(80, false))
+                        if (hasRockets && qtarget.Distance(Player) <= 525 && qtarget.CountEnemiesInRange(FarmRadius) < 3)
                         {
                             Q.Cast();
                         }
+
+                        //else if (WalkDistTime(reachPos, Player.MoveSpeed, out dist) < QSwapTime(80, false))
+                        //{
+                        //    Q.Cast();
+                        //}
 
                         if (hasRockets && Player.ManaPercent < 35 && Player.GetAutoAttackDamage(qtarget, true) * 3 < qtarget.Health)
                         {
