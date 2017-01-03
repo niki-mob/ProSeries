@@ -53,6 +53,8 @@ namespace Camille
                 E = new Spell(SpellSlot.E, 975f);
                 R = new Spell(SpellSlot.R, 465f);
 
+                E.SetSkillshot(0.125f, ObjectManager.Player.BoundingRadius, 1750, false, SkillshotType.SkillshotLine);
+
                 RootMenu = new Menu("Camille#", "camille", true);
 
                 var omenu = new Menu("-] Orbwalk", "orbwalk");
@@ -398,7 +400,12 @@ namespace Camille
                             else
                             {
                                 args.Process = false;
-                                Player.IssueOrder(GameObjectOrder.MoveTo, aiHero.ServerPosition, false);
+
+                                var poutput = E.GetPrediction(aiHero);
+                                if (poutput.Hitchance >= HitChance.High)
+                                {
+                                    Player.IssueOrder(GameObjectOrder.MoveTo, poutput.CastPosition, false);
+                                }
                             }
                         }
                     }
@@ -874,7 +881,7 @@ namespace Camille
 
             if (ChargingW && target.Distance(Player) <= W.Range + 35)
             {
-                var pos = Prediction.GetPrediction(target, Game.Ping).UnitPosition.Extend(Player.ServerPosition, W.Range - 65);
+                var pos = Prediction.GetPrediction(target, Game.Ping/2000f).UnitPosition.Extend(Player.ServerPosition, W.Range - 65);
                 if (pos.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
                 {
                     return;
