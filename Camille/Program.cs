@@ -1069,7 +1069,10 @@ namespace Camille
                     }
                 }
 
-                E.Cast(bestWallPoint);
+                if (E.Cast(bestWallPoint))
+                {
+                    E.LastCastAttemptT = Utils.GameTimeTickCount;
+                }
             }
         }
 
@@ -1115,6 +1118,12 @@ namespace Camille
 
             if (OnWall || IsDashing)
             {
+                return false;
+            }
+
+            if (Utils.GameTimeTickCount - E.LastCastAttemptT < 500)
+            {
+                // to prevent e away from w in the spur of the moment
                 return false;
             }
 
