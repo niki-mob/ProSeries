@@ -161,6 +161,7 @@ namespace Jinx
             var hexargb = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
 
             Game.PrintChat("<b><font color=\"" + hexargb + "\">Jinx#</font></b> - Loaded!");
+            Game.PrintChat("<b>This is beta and Q is still being worked on. Use with caution</b>");
         }
 
         private static void Drawing_OnEndScene(EventArgs args)

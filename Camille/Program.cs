@@ -11,13 +11,15 @@ namespace Camille
 {
     class Program
     {
+        #region Static Fields
+
         internal static Menu RootMenu;
         internal static Spell Q, W, E, R;
         internal static Orbwalking.Orbwalker Orbwalker;
         internal static Obj_AI_Hero Player => ObjectManager.Player;
         internal static HpBarIndicator BarIndicator = new HpBarIndicator();
 
-        internal static bool tt;
+        internal static bool IsBrawl;
         internal static bool HasQ2 => Player.HasBuff(Q2BuffName);
         internal static bool HasQ => Player.HasBuff(QBuffName);
         internal static bool OnWall => Player.HasBuff(WallBuffName) || E.Instance.Name != "CamilleE";
@@ -33,7 +35,29 @@ namespace Camille
         internal static string RBuffName => "camillertether";
         internal static string KnockBackBuffName => "camilleeknockback2";
 
+        #endregion
+
+        #region Collections
+
         internal static Dictionary<float, DangerPos> DangerPoints = new Dictionary<float, DangerPos>();
+
+        #endregion
+
+        #region Properties
+
+        // general
+        internal static bool AllowSkinChanger => RootMenu.Item("useskin").GetValue<bool>();
+        internal static bool ForceUltTarget => RootMenu.Item("r33").GetValue<bool>();
+
+        // keybinds
+        internal static bool FleeModeActive => RootMenu.Item("useflee").GetValue<KeyBind>().Active;
+
+        // sliders
+        internal static int HarassMana => RootMenu.Item("harassmana").GetValue<Slider>().Value;
+        internal static int WaveClearMana => RootMenu.Item("wcclearmana").GetValue<Slider>().Value;
+        internal static int JungleClearMana => RootMenu.Item("jgclearmana").GetValue<Slider>().Value;
+
+        #endregion
 
         static void Main(string[] args)
         {
@@ -45,164 +69,48 @@ namespace Camille
         {
             try
             {
-                if (ObjectManager.Player.ChampionName != "Camille")
-                    return;
-
-                Q = new Spell(SpellSlot.Q, 135f);
-                W = new Spell(SpellSlot.W, 625f);
-                E = new Spell(SpellSlot.E, 975f);
-                R = new Spell(SpellSlot.R, 465f);
-
-                E.SetSkillshot(0.125f, ObjectManager.Player.BoundingRadius, 1750, false, SkillshotType.SkillshotLine);
-
-                RootMenu = new Menu("Camille#", "camille", true);
-
-                var omenu = new Menu("-] Orbwalk", "orbwalk");
-                Orbwalker = new Orbwalking.Orbwalker(omenu);
-                RootMenu.AddSubMenu(omenu);
-
-                var kemenu = new Menu("-] Keys", "kemenu");
-                kemenu.AddItem(new MenuItem("usecombo", "Combo [active]")).SetValue(new KeyBind(32, KeyBindType.Press));
-                kemenu.AddItem(new MenuItem("useharass", "Harass [active]")).SetValue(new KeyBind('G', KeyBindType.Press));
-                kemenu.AddItem(new MenuItem("usewcclear", "Wave Clear [active]")).SetValue(new KeyBind('V', KeyBindType.Press));
-                kemenu.AddItem(new MenuItem("usejgclear", "Jungle Clear [active]")).SetValue(new KeyBind('V', KeyBindType.Press));
-                kemenu.AddItem(new MenuItem("useflee", "Flee [active]")).SetValue(new KeyBind('A', KeyBindType.Press));
-                RootMenu.AddSubMenu(kemenu);
-
-                var comenu = new Menu("-] Combo", "cmenu");
-
-                var tcmenu = new Menu("-] Extra", "tcmenu");
-
-                var abmenu = new Menu("-] Skills", "abmenu");
-
-                var whemenu = new Menu("R Focus Targets", "whemenu").SetFontStyle(FontStyle.Regular, SharpDX.Color.Cyan);
-                foreach (var hero in HeroManager.Enemies)
-                    whemenu.AddItem(new MenuItem("whR" + hero.ChampionName, hero.ChampionName))
-                        .SetValue(false).SetTooltip("R Only on " + hero.ChampionName).DontSave();
-                abmenu.AddSubMenu(whemenu);
-
-                abmenu.AddItem(new MenuItem("useqcombo", "Use Q")).SetValue(true);
-                abmenu.AddItem(new MenuItem("usewcombo", "Use W")).SetValue(true);
-                abmenu.AddItem(new MenuItem("useecombo", "Use E")).SetValue(true);
-                abmenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
-
-                var revade = new Menu("-] Evade", "revade");
-                revade.AddItem(new MenuItem("revade", "Use R to Evade")).SetValue(true);
-
-                foreach (var spell in from entry in Evadeable.DangerList
-                    select entry.Value into spell from hero in
-                        HeroManager.Enemies
-                            .Where(x => x.ChampionName.ToLower() == spell.ChampionName.ToLower())
-                    select spell)
+                if (ObjectManager.Player.ChampionName == "Camille")
                 {
-                    revade.AddItem(new MenuItem("revade" + spell.SDataName.ToLower(), "-> " + spell.ChampionName + " R"))
-                        .SetValue(true);
+                    SetupSpells();
+                    SetupConfig();
+
+                    #region Subscribed Events
+
+                    Game.OnUpdate += Game_OnUpdate;
+                    Drawing.OnDraw += Drawing_OnDraw;
+                    Drawing.OnEndScene += Drawing_OnEndScene;
+                    Obj_AI_Base.OnDoCast += Obj_AI_Base_OnDoCast;
+                    Obj_AI_Base.OnIssueOrder += CamilleOnIssueOrder;
+                    Obj_AI_Base.OnProcessSpellCast += Obj_AI_Base_OnProcessSpellCast;
+                    GameObject.OnCreate += Obj_GeneralParticleEmitter_OnCreate;
+                    Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
+
+                    #endregion
+
+                    var color = System.Drawing.Color.FromArgb(200, 0, 220, 144);
+                    var hexargb = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+
+                    Game.PrintChat("<b><font color=\"" + hexargb + "\">Camille#</font></b> - Loaded!");
+                    Utility.DelayAction.Add(1000, CheckActivator);
                 }
-
-                var mmenu = new Menu("-] Magnet", "mmenu");
-                mmenu.AddItem(new MenuItem("lockw", "Magnet W [Beta]")).SetValue(true);
-                mmenu.AddItem(new MenuItem("lockwcombo", "-> Combo")).SetValue(true);
-                mmenu.AddItem(new MenuItem("lockwharass", "-> Harass")).SetValue(true);
-                mmenu.AddItem(new MenuItem("lockwclear", "-> Clear")).SetValue(true);
-                mmenu.AddItem(new MenuItem("lockorbwalk", "Magnet Orbwalking"))
-                    .SetValue(false).SetTooltip("Coming Soon").ValueChanged +=
-                    (sender, eventArgs) => eventArgs.Process = false;
-
-
-                tcmenu.AddItem(new MenuItem("r55", "Only R Selected Target")).SetValue(false);
-                tcmenu.AddItem(new MenuItem("r33", "Orbwalk Focus R Target")).SetValue(true);
-                tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
-                tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int) E.Range));
-                tcmenu.AddItem(new MenuItem("enhancede", "Enhanced E Precision")).SetValue(false);
-                tcmenu.AddItem(new MenuItem("www", "Expirimental Combo")).SetValue(false).SetTooltip("W -> E");
-                comenu.AddSubMenu(tcmenu);
-
-                comenu.AddSubMenu(revade);
-                comenu.AddSubMenu(mmenu);
-                comenu.AddSubMenu(abmenu);
-
-
-                RootMenu.AddSubMenu(comenu);
-
-
-                var hamenu = new Menu("-] Harass", "hamenu");
-                hamenu.AddItem(new MenuItem("useqharass", "Use Q")).SetValue(true);
-                hamenu.AddItem(new MenuItem("usewharass", "Use W")).SetValue(true);
-                hamenu.AddItem(new MenuItem("harassmana", "Harass Mana %")).SetValue(new Slider(65));
-                RootMenu.AddSubMenu(hamenu);
-
-                var clmenu = new Menu("-] Clear", "clmenu");
-
-                var jgmenu = new Menu("Jungle", "jgmenu");
-                jgmenu.AddItem(new MenuItem("jgclearmana", "Minimum Mana %")).SetValue(new Slider(35));
-                jgmenu.AddItem(new MenuItem("useqjgclear", "Use Q")).SetValue(true);
-                jgmenu.AddItem(new MenuItem("usewjgclear", "Use W")).SetValue(true);
-                jgmenu.AddItem(new MenuItem("useejgclear", "Use E")).SetValue(true);
-                clmenu.AddSubMenu(jgmenu);
-
-                var wcmenu = new Menu("WaveClear", "wcmenu");
-                wcmenu.AddItem(new MenuItem("wcclearmana", "Minimum Mana %")).SetValue(new Slider(55));
-                wcmenu.AddItem(new MenuItem("useqwcclear", "Use Q")).SetValue(true);
-                wcmenu.AddItem(new MenuItem("usewwcclear", "Use W")).SetValue(true);
-                wcmenu.AddItem(new MenuItem("usewwcclearhit", "-> Min Hit >=")).SetValue(new Slider(3, 1, 6));
-                clmenu.AddSubMenu(wcmenu);
-
-                clmenu.AddItem(new MenuItem("clearnearenemy", "Dont Clear Near Enemy")).SetValue(true);
-                clmenu.AddItem(new MenuItem("t11", "Use Hydra")).SetValue(true);
-
-                RootMenu.AddSubMenu(clmenu);
-
-                var fmenu = new Menu("-] Flee", "fmenu");
-                fmenu.AddItem(new MenuItem("useeflee", "Use E")).SetValue(true);
-                RootMenu.AddSubMenu(fmenu);
-
-                var exmenu = new Menu("-] Events", "exmenu");
-                exmenu.AddItem(new MenuItem("interrupt", "Interrupt")).SetValue(true);
-                exmenu.AddItem(new MenuItem("antigapcloserx", "Anti-Gapcloser")).SetValue(false).ValueChanged +=
-                    (sender, eventArgs) => eventArgs.Process = false;
-                RootMenu.AddSubMenu(exmenu);
-
-                var skmenu = new Menu("-] Skins", "skmenu");
-                var skinitem = new MenuItem("useskin", "Enabled");
-                skmenu.AddItem(skinitem).SetValue(false);
-
-                skinitem.ValueChanged += (sender, eventArgs) =>
-                {
-                    if (!eventArgs.GetNewValue<bool>())
-                    {
-                        ObjectManager.Player.SetSkin(ObjectManager.Player.CharData.BaseSkinName, ObjectManager.Player.BaseSkinId);
-                    }
-                };
-
-                skmenu.AddItem(new MenuItem("skinid", "Skin Id")).SetValue(new Slider(1, 0, 4));
-                RootMenu.AddSubMenu(skmenu);
-
-                var drmenu = new Menu("-] Draw", "drmenu");
-                drmenu.AddItem(new MenuItem("drawhpbarfill", "Draw HPBarFill")).SetValue(true);
-                drmenu.AddItem(new MenuItem("drawmyehehe", "Draw E")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 0, 220, 144)));
-                drmenu.AddItem(new MenuItem("drawmywhehe", "Draw W")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 37, 230, 255)));
-                drmenu.AddItem(new MenuItem("drawmyrhehe", "Draw R")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 0, 220, 144)));
-                RootMenu.AddSubMenu(drmenu);
-
-                RootMenu.AddToMainMenu();
-
-                Game.OnUpdate += Game_OnUpdate;
-                Drawing.OnDraw += Drawing_OnDraw;
-                Drawing.OnEndScene += Drawing_OnEndScene;
-                Obj_AI_Base.OnDoCast += Obj_AI_Base_OnDoCast;
-                Obj_AI_Base.OnIssueOrder += CamilleOnIssueOrder;
-                Obj_AI_Base.OnProcessSpellCast += Obj_AI_Base_OnProcessSpellCast;
-                GameObject.OnCreate += Obj_GeneralParticleEmitter_OnCreate;
-                Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
-
-                var color = System.Drawing.Color.FromArgb(200, 0, 220, 144);
-                var hexargb = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
-
-                Game.PrintChat("<b><font color=\"" + hexargb + "\">Camille#</font></b> - Loaded!");
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
+            }
+        }
+
+        private static void CheckActivator()
+        {
+            if (Menu.GetMenu("Activator", "activator") == null &&
+                Menu.GetMenu("ElUtilitySuite", "ElUtilitySuite") == null &&
+                Menu.GetMenu("adcUtility", "adcUtility") == null &&
+                Menu.GetMenu("NabbActivator", "nabbactivator.menu") == null &&
+                Menu.GetMenu("Slutty Utility", "Slutty Utility") == null &&
+                Menu.GetMenu("MActivator", "masterActivator") == null)
+            {
+                Game.PrintChat("<font color=\"#FFF280\">Wooa</font>! you aren't using any activator. " +
+                               "How about trying <b><font color=\"#FF3366\">Activator#</font></b> :^)");
             }
         }
 
@@ -277,7 +185,7 @@ namespace Camille
 
         private static void Interrupter2_OnInterruptableTarget(Obj_AI_Hero sender, Interrupter2.InterruptableTargetEventArgs args)
         {
-            if (RootMenu.Item("interrupt").GetValue<bool>())
+            if (RootMenu.Item("interrupt2").GetValue<bool>())
             {
                 if (sender.IsValidTarget(E.Range) && E.IsReady())
                 {
@@ -295,12 +203,12 @@ namespace Camille
                         ObjectManager.Get<Obj_AI_Hero>()
                             .Where(ene => ene.IsValidTarget() && !ene.IsZombie))
                 {
-                    var color = R.IsReady() && IsLethal(enemy)
+                    var color = R.IsReady() && EasyKill(enemy)
                         ? new ColorBGRA(0, 255, 0, 90)
                         : new ColorBGRA(255, 255, 0, 90);
 
                     BarIndicator.unit = enemy;
-                    BarIndicator.drawDmg((float) ComboDamage(enemy), color);
+                    BarIndicator.drawDmg((float) Cdmg(enemy), color);
                 }
             }
         }
@@ -343,7 +251,7 @@ namespace Camille
             }
         }
 
-        private static bool RKappa()
+        private static bool UltEnemies()
         {
             return RootMenu.SubMenu("cmenu").SubMenu("abmenu").SubMenu("whemenu").Items.Any(i => i.GetValue<bool>()) &&
                  Player.GetEnemiesInRange(E.Range*2).Any(ez => RootMenu.Item("whR" + ez.ChampionName).GetValue<bool>());
@@ -649,8 +557,15 @@ namespace Camille
 
         private static void Game_OnUpdate(EventArgs args)
         {
+            // an ok check for teamfighting (sfx style)
+            IsBrawl = Player.CountAlliesInRange(1500) >= 2
+                && Player.CountEnemiesInRange(1350) > 2
+                || Player.CountEnemiesInRange(1200) > 3;
+
+            // turn off orbwalk attack while charging to allow movement
             Orbwalker.SetAttack(!ChargingW);
 
+            // remove danger positions
             foreach (var entry in DangerPoints)
             {
                 var ultimatum = entry.Value.Emitter;
@@ -668,23 +583,23 @@ namespace Camille
                 }
             }
 
-            if (RootMenu.Item("useflee").GetValue<KeyBind>().Active)
+            if (FleeModeActive)
             {
                 Orbwalking.Orbwalk(null, Game.CursorPos);
                 UseE(Game.CursorPos, false);
             }
 
-            if (RootMenu.Item("useskin").GetValue<bool>())
+            if (AllowSkinChanger)
             {
                 Player.SetSkin(Player.CharData.BaseSkinName, RootMenu.Item("skinid").GetValue<Slider>().Value);
             }
 
-            if (RootMenu.Item("r33").GetValue<bool>())
+            if (ForceUltTarget)
             {
                 var rtarget = HeroManager.Enemies.FirstOrDefault(x => x.HasBuff(RBuffName));
                 if (rtarget != null && rtarget.IsValidTarget() && !rtarget.IsZombie)
                 {
-                    if (Orbwalking.InAutoAttackRange(rtarget))
+                    if (rtarget.Distance(Player) <= Player.AttackRange + Player.Distance(Player.BBox.Minimum) + 75)
                     {
                         TargetSelector.SetTarget(rtarget);
                         Orbwalker.ForceTarget(rtarget);
@@ -692,7 +607,7 @@ namespace Camille
                 }
             }
 
-            if (IsDashing || OnWall)
+            if (IsDashing || OnWall || Player.IsDead)
             {
                 return;
             }
@@ -704,7 +619,7 @@ namespace Camille
 
             if (RootMenu.Item("usewcclear").GetValue<KeyBind>().Active)
             {
-                if (Player.Mana / Player.MaxMana * 100 > RootMenu.Item("wcclearmana").GetValue<Slider>().Value)
+                if (Player.Mana / Player.MaxMana * 100 > WaveClearMana)
                 {
                     Clear();
                 }
@@ -712,7 +627,7 @@ namespace Camille
 
             if (RootMenu.Item("usejgclear").GetValue<KeyBind>().Active)
             {
-                if (Player.Mana / Player.MaxMana * 100 > RootMenu.Item("jgclearmana").GetValue<Slider>().Value)
+                if (Player.Mana / Player.MaxMana * 100 > JungleClearMana)
                 {
                     Clear();
                 }
@@ -720,15 +635,165 @@ namespace Camille
 
             if (RootMenu.Item("useharass").GetValue<KeyBind>().Active)
             {
-                if (Player.Mana / Player.MaxMana * 100 > RootMenu.Item("harassmana").GetValue<Slider>().Value)
+                if (Player.Mana / Player.MaxMana * 100 > HarassMana)
                 {
                     Harass();
                 }
             }
-
-            tt = Player.CountAlliesInRange(1500) > 1 && Player.CountEnemiesInRange(1350) > 2 ||
-                 Player.CountEnemiesInRange(1200) > 2;
         }
+
+        #region Setup
+
+        static void SetupSpells()
+        {
+            Q = new Spell(SpellSlot.Q, 135f);
+            W = new Spell(SpellSlot.W, 625f);
+
+            E = new Spell(SpellSlot.E, 975f);
+            E.SetSkillshot(0.125f, ObjectManager.Player.BoundingRadius, 1750, false, SkillshotType.SkillshotLine);
+
+            R = new Spell(SpellSlot.R, 465f);
+        }
+
+        static void SetupConfig()
+        {
+            RootMenu = new Menu("Camille#", "camille", true);
+
+            var omenu = new Menu("-] Orbwalk", "orbwalk");
+            Orbwalker = new Orbwalking.Orbwalker(omenu);
+            RootMenu.AddSubMenu(omenu);
+
+            var kemenu = new Menu("-] Keys", "kemenu");
+            kemenu.AddItem(new MenuItem("usecombo", "Combo [active]")).SetValue(new KeyBind(32, KeyBindType.Press));
+            kemenu.AddItem(new MenuItem("useharass", "Harass [active]")).SetValue(new KeyBind('G', KeyBindType.Press));
+            kemenu.AddItem(new MenuItem("usewcclear", "Wave Clear [active]")).SetValue(new KeyBind('V', KeyBindType.Press));
+            kemenu.AddItem(new MenuItem("usejgclear", "Jungle Clear [active]")).SetValue(new KeyBind('V', KeyBindType.Press));
+            kemenu.AddItem(new MenuItem("useflee", "Flee [active]")).SetValue(new KeyBind('A', KeyBindType.Press));
+            RootMenu.AddSubMenu(kemenu);
+
+            var comenu = new Menu("-] Combo", "cmenu");
+
+            var tcmenu = new Menu("-] Extra", "tcmenu");
+
+            var abmenu = new Menu("-] Skills", "abmenu");
+
+            var whemenu = new Menu("R Focus Targets", "whemenu").SetFontStyle(FontStyle.Regular, SharpDX.Color.Cyan);
+            foreach (var hero in HeroManager.Enemies)
+                whemenu.AddItem(new MenuItem("whR" + hero.ChampionName, hero.ChampionName))
+                    .SetValue(false).SetTooltip("R Only on " + hero.ChampionName).DontSave();
+            abmenu.AddSubMenu(whemenu);
+
+            abmenu.AddItem(new MenuItem("useqcombo", "Use Q")).SetValue(true);
+            abmenu.AddItem(new MenuItem("usewcombo", "Use W")).SetValue(true);
+            abmenu.AddItem(new MenuItem("useecombo", "Use E")).SetValue(true);
+            abmenu.AddItem(new MenuItem("usercombo", "Use R")).SetValue(true);
+
+            var revade = new Menu("-] Evade", "revade");
+            revade.AddItem(new MenuItem("revade", "Use R to Evade")).SetValue(true);
+
+            foreach (var spell in from entry in Evadeable.DangerList
+                select entry.Value
+                into spell
+                from hero in HeroManager.Enemies.Where(x => x.ChampionName.ToLower() == spell.ChampionName.ToLower())
+                select spell)
+            {
+                revade.AddItem(new MenuItem("revade" + spell.SDataName.ToLower(), "-> " + spell.ChampionName + " R"))
+                    .SetValue(true);
+            }
+
+            var mmenu = new Menu("-] Magnet", "mmenu");
+            mmenu.AddItem(new MenuItem("lockw", "Magnet W [Beta]")).SetValue(true);
+            mmenu.AddItem(new MenuItem("lockwcombo", "-> Combo")).SetValue(true);
+            mmenu.AddItem(new MenuItem("lockwharass", "-> Harass")).SetValue(true);
+            mmenu.AddItem(new MenuItem("lockwclear", "-> Clear")).SetValue(true);
+            mmenu.AddItem(new MenuItem("lockorbwalk", "Magnet Orbwalking"))
+                .SetValue(false).SetTooltip("Coming Soon").ValueChanged +=
+                (sender, eventArgs) => eventArgs.Process = false;
+
+
+            tcmenu.AddItem(new MenuItem("r55", "Only R Selected Target")).SetValue(false);
+            tcmenu.AddItem(new MenuItem("r33", "Orbwalk Focus R Target")).SetValue(true);
+            tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
+            tcmenu.AddItem(new MenuItem("minerange", "Minimum E Range")).SetValue(new Slider(165, 0, (int)E.Range));
+            tcmenu.AddItem(new MenuItem("enhancede", "Enhanced E Precision")).SetValue(false);
+            tcmenu.AddItem(new MenuItem("www", "Expirimental Combo")).SetValue(false).SetTooltip("W -> E");
+            comenu.AddSubMenu(tcmenu);
+
+            comenu.AddSubMenu(revade);
+            comenu.AddSubMenu(mmenu);
+            comenu.AddSubMenu(abmenu);
+
+
+            RootMenu.AddSubMenu(comenu);
+
+
+            var hamenu = new Menu("-] Harass", "hamenu");
+            hamenu.AddItem(new MenuItem("useqharass", "Use Q")).SetValue(true);
+            hamenu.AddItem(new MenuItem("usewharass", "Use W")).SetValue(true);
+            hamenu.AddItem(new MenuItem("harassmana", "Harass Mana %")).SetValue(new Slider(65));
+            RootMenu.AddSubMenu(hamenu);
+
+            var clmenu = new Menu("-] Clear", "clmenu");
+
+            var jgmenu = new Menu("Jungle", "jgmenu");
+            jgmenu.AddItem(new MenuItem("jgclearmana", "Minimum Mana %")).SetValue(new Slider(35));
+            jgmenu.AddItem(new MenuItem("useqjgclear", "Use Q")).SetValue(true);
+            jgmenu.AddItem(new MenuItem("usewjgclear", "Use W")).SetValue(true);
+            jgmenu.AddItem(new MenuItem("useejgclear", "Use E")).SetValue(true);
+            clmenu.AddSubMenu(jgmenu);
+
+            var wcmenu = new Menu("WaveClear", "wcmenu");
+            wcmenu.AddItem(new MenuItem("wcclearmana", "Minimum Mana %")).SetValue(new Slider(55));
+            wcmenu.AddItem(new MenuItem("useqwcclear", "Use Q")).SetValue(true);
+            wcmenu.AddItem(new MenuItem("usewwcclear", "Use W")).SetValue(true);
+            wcmenu.AddItem(new MenuItem("usewwcclearhit", "-> Min Hit >=")).SetValue(new Slider(3, 1, 6));
+            clmenu.AddSubMenu(wcmenu);
+
+            clmenu.AddItem(new MenuItem("clearnearenemy", "Dont Clear Near Enemy")).SetValue(true);
+            clmenu.AddItem(new MenuItem("t11", "Use Hydra")).SetValue(true);
+
+            RootMenu.AddSubMenu(clmenu);
+
+            var fmenu = new Menu("-] Flee", "fmenu");
+            fmenu.AddItem(new MenuItem("useeflee", "Use E")).SetValue(true);
+            RootMenu.AddSubMenu(fmenu);
+
+            var exmenu = new Menu("-] Events", "exmenu");
+            exmenu.AddItem(new MenuItem("interrupt2", "Interrupt")).SetValue(false).ValueChanged +=
+                (sender, eventArgs) => eventArgs.Process = false;
+            RootMenu.AddSubMenu(exmenu);
+            exmenu.AddItem(new MenuItem("antigapcloserx", "Anti-Gapcloser")).SetValue(false).ValueChanged +=
+                (sender, eventArgs) => eventArgs.Process = false;
+            RootMenu.AddSubMenu(exmenu);
+
+            var skmenu = new Menu("-] Skins", "skmenu");
+            var skinitem = new MenuItem("useskin", "Enabled");
+            skmenu.AddItem(skinitem).SetValue(false);
+
+            skinitem.ValueChanged += (sender, eventArgs) =>
+            {
+                if (!eventArgs.GetNewValue<bool>())
+                {
+                    ObjectManager.Player.SetSkin(ObjectManager.Player.CharData.BaseSkinName, ObjectManager.Player.BaseSkinId);
+                }
+            };
+
+            skmenu.AddItem(new MenuItem("skinid", "Skin Id")).SetValue(new Slider(1, 0, 4));
+            RootMenu.AddSubMenu(skmenu);
+
+            var drmenu = new Menu("-] Draw", "drmenu");
+            drmenu.AddItem(new MenuItem("drawhpbarfill", "Draw HPBarFill")).SetValue(true);
+            drmenu.AddItem(new MenuItem("drawmyehehe", "Draw E")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 0, 220, 144)));
+            drmenu.AddItem(new MenuItem("drawmywhehe", "Draw W")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 37, 230, 255)));
+            drmenu.AddItem(new MenuItem("drawmyrhehe", "Draw R")).SetValue(new Circle(true, System.Drawing.Color.FromArgb(165, 0, 220, 144)));
+            RootMenu.AddSubMenu(drmenu);
+
+            RootMenu.AddToMainMenu();
+        }
+
+        #endregion
+
+        #region Modes
 
         static void Combo()
         {
@@ -736,7 +801,9 @@ namespace Camille
             if (target.IsValidTarget() && !target.IsZombie)
             {
                 if (RootMenu.Item("lockwcombo").GetValue<bool>())
+                {
                     LockW(target);
+                }
 
                 if (RootMenu.Item("usewcombo").GetValue<bool>())
                 {
@@ -747,10 +814,14 @@ namespace Camille
                 }
 
                 if (RootMenu.Item("useecombo").GetValue<bool>())
+                {
                     UseE(target.ServerPosition);
+                }
 
                 if (RootMenu.Item("usercombo").GetValue<bool>())
+                {
                     UseR(target);
+                }
             }
         }
 
@@ -760,10 +831,14 @@ namespace Camille
             if (target.IsValidTarget() && !target.IsZombie)
             {
                 if (RootMenu.Item("lockwharass").GetValue<bool>())
+                {
                     LockW(target);
+                }
 
                 if (RootMenu.Item("usewharass").GetValue<bool>())
+                {
                     UseW(target);
+                }
             }
         }
 
@@ -774,10 +849,12 @@ namespace Camille
 
             foreach (var unit in minions)
             {
-                if (!unit.Name.Contains("Mini"))
+                if (!unit.Name.Contains("Mini")) // mobs
                 {
                     if (RootMenu.Item("lockwclear").GetValue<bool>())
+                    {
                         LockW(unit);
+                    }
 
                     if (RootMenu.Item("usewjgclear").GetValue<bool>())
                     {
@@ -795,13 +872,14 @@ namespace Camille
                         }
                     }
                 }
-                else
+                else // minions
                 {
                     if (RootMenu.Item("lockwclear").GetValue<bool>())
+                    {
                         LockW(unit);
+                    }
 
-                    if (Player.CountEnemiesInRange(1000) < 1 ||
-                        !RootMenu.Item("clearnearenemy").GetValue<bool>())
+                    if (Player.CountEnemiesInRange(1000) < 1 || !RootMenu.Item("clearnearenemy").GetValue<bool>())
                     {
                         if (RootMenu.Item("usewwcclear").GetValue<bool>() && W.IsReady())
                         {
@@ -818,6 +896,10 @@ namespace Camille
                 }
             }
         }
+
+        #endregion
+
+        #region Skills
 
         static void UseQ(AttackableUnit t)
         {
@@ -862,35 +944,6 @@ namespace Camille
             }
         }
 
-        static void LockW(Obj_AI_Base target)
-        {
-            if (!RootMenu.Item("lockw").GetValue<bool>())
-            {
-                return;
-            }
-
-            if (OnWall || IsDashing || target == null || !CanW(target))
-            {
-                return;
-            }
-
-            if (ChargingW && Orbwalker.ActiveMode != Orbwalking.OrbwalkingMode.None)
-            {
-                Orbwalker.SetAttack(false);
-            }
-
-            if (ChargingW && target.Distance(Player) <= W.Range + 35)
-            {
-                var pos = Prediction.GetPrediction(target, Game.Ping/2000f).UnitPosition.Extend(Player.ServerPosition, W.Range - 65);
-                if (pos.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
-                {
-                    return;
-                }
-
-                Player.IssueOrder(GameObjectOrder.MoveTo, pos, false);
-            }
-        }
-
         static void UseE(Vector3 p, bool combo = true)
         {
             if (IsDashing || OnWall || ChargingW || !E.IsReady())
@@ -922,20 +975,20 @@ namespace Camille
                 posRadius = 65;
             }
 
-            var candidatePos = new List<Vector2>();
+            var candidatePosList = new List<Vector2>();
 
             while (posChecked < maxPosChecked)
             {
                 radiusIndex++;
 
                 var curRadius = radiusIndex * (0x2 * posRadius);
-                var curCurcleChecks = (int) Math.Ceiling((2 * Math.PI * curRadius) / (2 * (double) posRadius));
+                var curCurcleChecks = (int) Math.Ceiling((0x2 * Math.PI * curRadius) / (0x2 * (double) posRadius));
 
                 for (var i = 1; i < curCurcleChecks; i++)
                 {
                     posChecked++;
 
-                    var cRadians = (0x2 * Math.PI / (curCurcleChecks - 1)) * i;
+                    var cRadians = (0x2 * Math.PI / (curCurcleChecks - 0x1)) * i;
                     var xPos = (float) Math.Floor(p.X + curRadius * Math.Cos(cRadians));
                     var yPos = (float) Math.Floor(p.Y + curRadius * Math.Sin(cRadians));
                     var desiredPos = new Vector2(xPos, yPos);
@@ -966,37 +1019,34 @@ namespace Camille
                         continue;
                     }
 
-                    if (ChargingW)
+                    var wtarget = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
+                    if (wtarget != null && ChargingW)
                     {
-                        var wtarget = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
-                        if (wtarget != null)
+                        if (desiredPos.Distance(wtarget.ServerPosition) > W.Range - 100)
                         {
-                            if (desiredPos.Distance(wtarget.ServerPosition) > W.Range)
-                            {
-                                continue;
-                            }
+                            continue;
                         }
                     }
 
                     if (desiredPos.IsWall())
                     {
-                        candidatePos.Add(desiredPos);
+                        candidatePosList.Add(desiredPos);
                     }
                 }
             }
 
             var bestWallPoint =
-                candidatePos.Where(x => Player.Distance(x) <= E.Range && x.Distance(p) <= E.Range)
+                candidatePosList.Where(x => Player.Distance(x) <= E.Range && x.Distance(p) <= E.Range)
                     .OrderBy(x => x.Distance(p))
                     .FirstOrDefault();
 
             if (E.IsReady() && bestWallPoint.IsValid())
             {
-                if (W.IsReady() && RootMenu.Item("usewcombo").GetValue<bool>())
+                if (W.IsReady() && RootMenu.Item("usewcombo").GetValue<bool>() && combo)
                 {
                     W.UpdateSourcePosition(bestWallPoint.To3D(), bestWallPoint.To3D());
 
-                    if (combo && RootMenu.Item("www").GetValue<bool>()) 
+                    if (RootMenu.Item("www").GetValue<bool>())
                     {
                         int dashSpeedEst = 1450;
                         int hookSpeedEst = 1250;
@@ -1049,9 +1099,9 @@ namespace Camille
                     }
                 }
 
-                if (R.IsReady() && ComboDamage(target) >= target.Health)
+                if (R.IsReady() && Cdmg(target) >= target.Health)
                 {
-                    if (!tt || tt && !RKappa() || RootMenu.Item("whR" + target.ChampionName).GetValue<bool>())
+                    if (!IsBrawl || IsBrawl && !UltEnemies() || RootMenu.Item("whR" + target.ChampionName).GetValue<bool>())
                     { 
                         R.CastOnUnit(target);
                     }
@@ -1063,12 +1113,12 @@ namespace Camille
         {
             const float wCastTime = 2000f;
 
-            if (OnWall || HasQ2 || IsDashing)
+            if (OnWall || IsDashing)
             {
                 return false;
             }
 
-            if (Orbwalking.InAutoAttackRange(target))
+            if (target.Distance(Player) <= Player.AttackRange + Player.Distance(Player.BBox.Minimum) + 75)
             {
                 if (Player.GetAutoAttackDamage(target, true) * 2 + Qdmg(target, false) >= target.Health)
                 {
@@ -1091,12 +1141,45 @@ namespace Camille
             return true;
         }
 
-        private static bool IsLethal(Obj_AI_Base unit)
+        static void LockW(Obj_AI_Base target)
         {
-            return ComboDamage(unit) / 1.65 >= unit.Health;
+            if (!RootMenu.Item("lockw").GetValue<bool>())
+            {
+                return;
+            }
+
+            if (OnWall || IsDashing || target == null || !CanW(target))
+            {
+                return;
+            }
+
+            if (ChargingW && Orbwalker.ActiveMode != Orbwalking.OrbwalkingMode.None)
+            {
+                Orbwalker.SetAttack(false);
+            }
+
+            if (ChargingW && target.Distance(Player) <= W.Range + 35)
+            {
+                var pos = Prediction.GetPrediction(target, Game.Ping / 2000f).UnitPosition.Extend(Player.ServerPosition, W.Range - 65);
+                if (pos.UnderTurret(true) && RootMenu.Item("eturret").GetValue<KeyBind>().Active)
+                {
+                    return;
+                }
+
+                Player.IssueOrder(GameObjectOrder.MoveTo, pos, false);
+            }
         }
 
-        private static double ComboDamage(Obj_AI_Base unit)
+        #endregion
+
+        #region Damage
+
+        private static bool EasyKill(Obj_AI_Base unit)
+        {
+            return Cdmg(unit) / 1.65 >= unit.Health;
+        }
+
+        private static double Cdmg(Obj_AI_Base unit)
         {
             if (unit == null)
                 return 0d;
@@ -1108,7 +1191,7 @@ namespace Camille
 
             return Math.Min(qcount * extraqq[(int) (Math.Abs(Player.PercentCooldownMod) * 100/10)], 
                     Player.Mana / Q.ManaCost) * Qdmg(unit, false) + Wdmg(unit) +
-                        RBonus(Player.GetAutoAttackDamage(unit, true), unit) * qcount + Edmg(unit);
+                        (Rdmg(Player.GetAutoAttackDamage(unit, true), unit) * qcount) + Edmg(unit);
         }
 
         private static double Qdmg(Obj_AI_Base target, bool includeq2 = true)
@@ -1171,7 +1254,7 @@ namespace Camille
             return dmg;
         }
 
-        private static double RBonus(double dmg, Obj_AI_Base target)
+        private static double Rdmg(double dmg, Obj_AI_Base target)
         {
             if (R.IsReady() || target.HasBuff(RBuffName))
             {
@@ -1181,5 +1264,7 @@ namespace Camille
 
             return dmg;
         }
+
+        #endregion
     }
 }
