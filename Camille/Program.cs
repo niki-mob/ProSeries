@@ -1114,9 +1114,27 @@ namespace Camille
         {
             const float wCastTime = 2000f;
 
-            if (OnWall || IsDashing)
+            if (OnWall || IsDashing || target == null)
             {
                 return false;
+            }
+
+            if (Q.IsReady())
+            {
+                if (!HasQ || HasQ2)
+                {
+                    if (target.Distance(Player) <= Player.AttackRange + Player.Distance(Player.BBox.Minimum) + 65)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (Qdmg(target, false) + Player.GetAutoAttackDamage(target, true) * 1 >= target.Health)
+                    {
+                        return false;
+                    }
+                }
             }
 
             if (Utils.GameTimeTickCount - LastECastT < 500)
@@ -1125,7 +1143,7 @@ namespace Camille
                 return false;
             }
 
-            if (target.Distance(Player) <= Player.AttackRange + Player.Distance(Player.BBox.Minimum) + 75)
+            if (target.Distance(Player) <= Player.AttackRange + Player.Distance(Player.BBox.Minimum) + 65)
             {
                 if (Player.GetAutoAttackDamage(target, true) * 2 + Qdmg(target, false) >= target.Health)
                 {
