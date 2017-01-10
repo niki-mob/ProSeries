@@ -24,7 +24,7 @@ namespace Camille
         internal static bool HasQ2 => Player.HasBuff(Q2BuffName);
         internal static bool HasQ => Player.HasBuff(QBuffName);
         internal static bool OnWall => Player.HasBuff(WallBuffName) || E.Instance.Name != "CamilleE";
-        internal static bool IsDashing => Player.HasBuff(EDashBuffName + "1") || Player.HasBuff(EDashBuffName + "2");
+        internal static bool IsDashing => Player.HasBuff(EDashBuffName + "1") || Player.HasBuff(EDashBuffName + "2") || Player.IsDashing();
         internal static bool ChargingW => Player.HasBuff(WBuffName);
         internal static bool KnockedBack(Obj_AI_Base target) => target != null && target.HasBuff(KnockBackBuffName);
 
