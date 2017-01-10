@@ -20,6 +20,7 @@ namespace Camille
         internal static HpBarIndicator BarIndicator = new HpBarIndicator();
 
         internal static bool IsBrawl;
+        internal static int LastECastT;
         internal static bool HasQ2 => Player.HasBuff(Q2BuffName);
         internal static bool HasQ => Player.HasBuff(QBuffName);
         internal static bool OnWall => Player.HasBuff(WallBuffName) || E.Instance.Name != "CamilleE";
@@ -710,7 +711,6 @@ namespace Camille
                 .SetValue(false).SetTooltip("Coming Soon").ValueChanged +=
                 (sender, eventArgs) => eventArgs.Process = false;
 
-
             tcmenu.AddItem(new MenuItem("r55", "Only R Selected Target")).SetValue(false);
             tcmenu.AddItem(new MenuItem("r33", "Orbwalk Focus R Target")).SetValue(true);
             tcmenu.AddItem(new MenuItem("eturret", "Dont E Under Turret")).SetValue(new KeyBind('L', KeyBindType.Toggle, true)).Permashow();
@@ -722,7 +722,6 @@ namespace Camille
             comenu.AddSubMenu(revade);
             comenu.AddSubMenu(mmenu);
             comenu.AddSubMenu(abmenu);
-
 
             RootMenu.AddSubMenu(comenu);
 
@@ -761,7 +760,6 @@ namespace Camille
             var exmenu = new Menu("-] Events", "exmenu");
             exmenu.AddItem(new MenuItem("interrupt2", "Interrupt")).SetValue(false).ValueChanged +=
                 (sender, eventArgs) => eventArgs.Process = false;
-            RootMenu.AddSubMenu(exmenu);
             exmenu.AddItem(new MenuItem("antigapcloserx", "Anti-Gapcloser")).SetValue(false).ValueChanged +=
                 (sender, eventArgs) => eventArgs.Process = false;
             RootMenu.AddSubMenu(exmenu);
@@ -1071,7 +1069,7 @@ namespace Camille
 
                 if (E.Cast(bestWallPoint))
                 {
-                    E.LastCastAttemptT = Utils.GameTimeTickCount;
+                    LastECastT = Utils.GameTimeTickCount;
                 }
             }
         }
@@ -1121,7 +1119,7 @@ namespace Camille
                 return false;
             }
 
-            if (Utils.GameTimeTickCount - E.LastCastAttemptT < 500)
+            if (Utils.GameTimeTickCount - LastECastT < 500)
             {
                 // to prevent e away from w in the spur of the moment
                 return false;
